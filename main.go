@@ -68,7 +68,7 @@ func main() {
 	// Print total for old month
 	if *detailsFlag {
 		fmt.Println()
-		fmt.Printf("* %s %d (last month of export, may be incomplete)\n", refMonth.Month(), refMonth.Year())
+		fmt.Printf("* %s %d\n", refMonth.Month(), refMonth.Year())
 		fmt.Printf("Option base:\t%0.2f€\n", monthBase)
 		fmt.Printf("Option HC:\t%0.2f€\n", monthHC)
 		fmt.Printf("Option Tempo:\t%0.2f€\n", monthTempo)
