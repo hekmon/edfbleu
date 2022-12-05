@@ -1,0 +1,139 @@
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+type tempoDay string
+
+const (
+	tempoRed   tempoDay = "rouge"
+	tempoWhite tempoDay = "white"
+	tempoBlue  tempoDay = "bleu"
+)
+
+var (
+	redDays   []time.Time
+	whiteDays []time.Time
+)
+
+func init() {
+	// get paris location
+	parisLocation, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		panic(err)
+	}
+	// setup white days
+	var day time.Time
+	redDates := []string{
+		"27/01/2022",
+		"26/01/2022",
+		"25/01/2022",
+		"24/01/2022",
+		"21/01/2022",
+		"20/01/2022",
+		"19/01/2022",
+		"18/01/2022",
+		"17/01/2022",
+		"14/01/2022",
+		"13/01/2022",
+		"12/01/2022",
+		"11/01/2022",
+		"10/01/2022",
+		"06/01/2022",
+		"22/12/2021",
+		"21/12/2021",
+		"20/12/2021",
+		"15/12/2021",
+		"14/12/2021",
+		"13/12/2021",
+		"29/11/2021",
+	}
+	for index, whiteDate := range redDates {
+		day, err = time.ParseInLocation(pricesDateFormat, whiteDate, parisLocation)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse tempo red day at index %d: %s", index, err))
+		}
+		redDays = append(whiteDays, day)
+	}
+	// setup white days
+	whiteDates := []string{
+		"06/12/2022",
+		"05/12/2022",
+		"02/12/2022",
+		"01/12/2022",
+		"30/11/2022",
+		"31/05/2022",
+		"30/05/2022",
+		"24/05/2022",
+		"14/04/2022",
+		"06/04/2022",
+		"05/04/2022",
+		"04/04/2022",
+		"08/03/2022",
+		"07/03/2022",
+		"03/03/2022",
+		"02/03/2022",
+		"01/03/2022",
+		"28/02/2022",
+		"25/02/2022",
+		"23/02/2022",
+		"11/02/2022",
+		"10/02/2022",
+		"09/02/2022",
+		"08/02/2022",
+		"07/02/2022",
+		"03/02/2022",
+		"02/02/2022",
+		"31/01/2022",
+		"28/01/2022",
+		"22/01/2022",
+		"15/01/2022",
+		"07/01/2022",
+		"05/01/2022",
+		"17/12/2021",
+		"16/12/2021",
+		"11/12/2021",
+		"09/12/2021",
+		"08/12/2021",
+		"07/12/2021",
+		"06/12/2021",
+		"03/12/2021",
+		"02/12/2021",
+		"01/12/2021",
+		"30/11/2021",
+		"26/11/2021",
+		"25/11/2021",
+		"24/11/2021",
+		"23/11/2021",
+	}
+	for index, whiteDate := range whiteDates {
+		day, err = time.ParseInLocation(pricesDateFormat, whiteDate, parisLocation)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse tempo white day at index %d: %s", index, err))
+		}
+		whiteDays = append(whiteDays, day)
+	}
+}
+
+func getTempoDayColor(datetime time.Time) tempoDay {
+	// adjust date for early HC
+	if datetime.Hour() < 6 {
+		// we need to take the day of the day before !
+		datetime = datetime.Add(-1 * 7 * time.Hour)
+	}
+	// search red days
+	for _, redDay := range redDays {
+		if redDay.Year() == datetime.Year() && redDay.Month() == datetime.Month() && redDay.Day() == datetime.Day() {
+			return tempoRed
+		}
+	}
+	// search white days
+	for _, whiteDay := range whiteDays {
+		if whiteDay.Year() == datetime.Year() && whiteDay.Month() == datetime.Month() && whiteDay.Day() == datetime.Day() {
+			return tempoWhite
+		}
+	}
+	return tempoBlue
+}
