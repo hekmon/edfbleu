@@ -1,14 +1,22 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"time"
 )
 
 func main() {
-	// Get the CSV reader
-	header, data, err := parseFile(reffile)
+	// Take the file path
+	filePathFlag := flag.String("csv", "", "path to the Enedis hourly export file")
+	detailsFlag := flag.Bool("monthly", false, "show the montly details")
+	flag.Parse()
+	if *filePathFlag == "" {
+		log.Fatal("please set the -csv flag")
+	}
+	// Parse the file as enedis csv
+	header, data, err := parseFile(*filePathFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,7 +46,7 @@ func main() {
 			monthHC += pointHC
 			monthTempo += pointTempo
 		} else {
-			if !refMonth.IsZero() {
+			if !refMonth.IsZero() && *detailsFlag {
 				// Print total for previous month
 				fmt.Println()
 				fmt.Printf("* %s %d\n", refMonth.Month(), refMonth.Year())
@@ -58,11 +66,13 @@ func main() {
 		totalTempo += pointTempo
 	}
 	// Print total for old month
-	fmt.Println()
-	fmt.Printf("* %s %d (last month of export, may be incomplete)\n", refMonth.Month(), refMonth.Year())
-	fmt.Printf("Option base:\t%0.2f€\n", monthBase)
-	fmt.Printf("Option HC:\t%0.2f€\n", monthHC)
-	fmt.Printf("Option Tempo:\t%0.2f€\n", monthTempo)
+	if *detailsFlag {
+		fmt.Println()
+		fmt.Printf("* %s %d (last month of export, may be incomplete)\n", refMonth.Month(), refMonth.Year())
+		fmt.Printf("Option base:\t%0.2f€\n", monthBase)
+		fmt.Printf("Option HC:\t%0.2f€\n", monthHC)
+		fmt.Printf("Option Tempo:\t%0.2f€\n", monthTempo)
+	}
 	// Print total
 	fmt.Println()
 	fmt.Println("* TOTAL")
