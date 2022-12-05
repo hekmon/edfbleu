@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 )
 
 func main() {
@@ -18,9 +19,9 @@ func main() {
 		tempo float64
 	)
 	for _, point := range data {
-		base += point.Value * getBasePrice(point.Time)
-		hc += point.Value * getHCPrice(point.Time)
-		tempo += point.Value * getTempoPrice(point.Time)
+		base += point.Value * getBasePrice(point.Time.Add(30*time.Minute*-1))
+		hc += point.Value * getHCPrice(point.Time.Add(30*time.Minute*-1))
+		tempo += point.Value * getTempoPrice(point.Time.Add(30*time.Minute*-1))
 	}
 	// Show Results
 	fmt.Printf("PRM:\t\t%s\n", header.ID)
