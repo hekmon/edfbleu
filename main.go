@@ -22,9 +22,12 @@ func main() {
 	fmt.Printf("PRM:\t\t%s\n", header.ID)
 	fmt.Printf("Start:\t\t%v\n", header.Start)
 	fmt.Printf("End:\t\t%v\n", header.End)
-	for _, point := range data {
+	for index, point := range data {
 		// Adjust time for start and not end
 		adjustedTime := point.Time.Add(30 * time.Minute * -1)
+		if index == 0 {
+			refMonth = adjustedTime
+		}
 		// Compute price for current point
 		pointBase = point.Value * getBasePrice(adjustedTime)
 		pointHC = point.Value * getHCPrice(adjustedTime)

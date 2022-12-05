@@ -107,7 +107,7 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 		recordTime  time.Time
 		recordValue int
 	)
-	data = make([]point, 365*24*2)
+	data = make([]point, 0, 365*24*2)
 	for line = 4; ; line++ {
 		// read line
 		records, err = cr.Read()
@@ -138,6 +138,9 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 			Time:  recordTime,
 			Value: float64(recordValue) / 1000, // convert Wh to kWh
 		})
+		if recordTime.Year() == 0 {
+			fmt.Println("YEAR 0: line", line)
+		}
 	}
 	if errors.Is(err, io.EOF) {
 		err = nil

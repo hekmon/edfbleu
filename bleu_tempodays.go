@@ -50,12 +50,12 @@ func init() {
 		"13/12/2021",
 		"29/11/2021",
 	}
-	for index, whiteDate := range redDates {
-		day, err = time.ParseInLocation(pricesDateFormat, whiteDate, parisLocation)
+	for index, redDate := range redDates {
+		day, err = time.ParseInLocation(pricesDateFormat, redDate, parisLocation)
 		if err != nil {
 			panic(fmt.Sprintf("failed to parse tempo red day at index %d: %s", index, err))
 		}
-		redDays = append(whiteDays, day)
+		redDays = append(redDays, day)
 	}
 	// setup white days
 	whiteDates := []string{
