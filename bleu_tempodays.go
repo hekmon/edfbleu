@@ -27,6 +27,7 @@ func init() {
 	// setup white days
 	var day time.Time
 	redDates := []string{
+		"08/12/2022",
 		"27/01/2022",
 		"26/01/2022",
 		"25/01/2022",
@@ -59,6 +60,7 @@ func init() {
 	}
 	// setup white days
 	whiteDates := []string{
+		"07/12/2022",
 		"06/12/2022",
 		"05/12/2022",
 		"02/12/2022",

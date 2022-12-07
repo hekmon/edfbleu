@@ -20,6 +20,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Issue warning if our data is outdated
+	if header.End.After(lastUpdate) {
+		fmt.Println()
+		fmt.Printf("/!\\ the data set contains values that are beyong the internal data this program has. Please update the code.")
+		fmt.Println()
+	}
 	// Compute
 	var (
 		totalBase, monthBase, pointBase    float64

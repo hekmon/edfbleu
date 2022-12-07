@@ -9,6 +9,7 @@ const (
 )
 
 var (
+	lastUpdate time.Time
 	prices2022 time.Time
 	prices2021 time.Time
 )
@@ -16,6 +17,11 @@ var (
 func init() {
 	// get paris location
 	parisLocation, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		panic(err)
+	}
+	// Last update
+	lastUpdate, err = time.ParseInLocation(pricesDateFormat, "08/12/2022", parisLocation)
 	if err != nil {
 		panic(err)
 	}
