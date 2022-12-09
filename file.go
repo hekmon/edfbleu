@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	enedisCustomCSVSep = ';'
-	headerFields       = 9
-	headerDateFormat   = "02/01/2006"                // 31/12/2021
-	dataDateFormat     = "2006-01-02T15:04:05-07:00" // 2021-12-31T00:30:00+01:00
+	enedisCustomCSVSep     = ';'
+	headerFields           = 9
+	headerDateFormat       = "02/01/2006"                // 31/12/2021
+	dataDateFormat         = "2006-01-02T15:04:05-07:00" // 2021-12-31T00:30:00+01:00
+	enedisHourlyExportStep = 30 * time.Minute
 )
 
 type CSVHeader struct {
@@ -107,7 +108,7 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 		recordTime  time.Time
 		recordValue int
 	)
-	data = make([]point, 0, 365*24*2)
+	data = make([]point, 0, 365*24*2) // most people will analyse a full year (make more sense for tempo)
 	for line = 4; ; line++ {
 		// read line
 		records, err = cr.Read()

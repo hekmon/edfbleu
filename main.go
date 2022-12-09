@@ -38,7 +38,7 @@ func main() {
 	fmt.Printf("End:\t\t%v\n", header.End)
 	for index, point := range data {
 		// Adjust time for start and not end
-		adjustedTime := point.Time.Add(30 * time.Minute * -1)
+		adjustedTime := point.Time.Add(enedisHourlyExportStep * -1)
 		if index == 0 {
 			refMonth = adjustedTime
 		}
@@ -52,7 +52,7 @@ func main() {
 			monthHC += pointHC
 			monthTempo += pointTempo
 		} else {
-			if !refMonth.IsZero() && *detailsFlag {
+			if *detailsFlag {
 				// Print total for previous month
 				fmt.Println()
 				fmt.Printf("* %s %d\n", refMonth.Month(), refMonth.Year())
