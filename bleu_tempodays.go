@@ -9,7 +9,7 @@ type tempoDay string
 
 const (
 	tempoRed   tempoDay = "rouge"
-	tempoWhite tempoDay = "white"
+	tempoWhite tempoDay = "blanc"
 	tempoBlue  tempoDay = "bleu"
 )
 
@@ -24,7 +24,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	// setup white days
+	// setup red days
 	var day time.Time
 	redDates := []string{
 		"08/12/2022",
@@ -122,7 +122,7 @@ func init() {
 func getTempoDayColor(datetime time.Time) tempoDay {
 	// adjust date for early HC
 	if datetime.Hour() < 6 {
-		// we need to take the day of the day before !
+		// we need to take the color of the previous day
 		datetime = datetime.Add(-1 * 7 * time.Hour)
 	}
 	// search red days
