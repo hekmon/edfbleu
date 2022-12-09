@@ -33,7 +33,7 @@ func main() {
 		totalTempo, monthTempo, pointTempo float64
 		refMonth                           time.Time
 	)
-	fmt.Printf("PRM:\t\t%s\n", header.ID)
+	fmt.Printf("PRM:\t\t%s\n", header.PRMID)
 	fmt.Printf("Start:\t\t%v\n", header.Start)
 	fmt.Printf("End:\t\t%v\n", header.End)
 	for index, point := range data {

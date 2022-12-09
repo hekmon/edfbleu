@@ -20,9 +20,9 @@ const (
 )
 
 type CSVHeader struct {
-	ID    string    `json:"Identifiant PRM"`
-	Start time.Time `json:"start_date"`
-	End   time.Time `json:"end_date"`
+	PRMID string
+	Start time.Time
+	End   time.Time
 }
 
 type point struct {
@@ -78,7 +78,7 @@ func parseHeader(cr *csv.Reader) (header CSVHeader, err error) {
 		err = fmt.Errorf("failed to get paris timezone: %w", err)
 		return
 	}
-	header.ID = records[0]
+	header.PRMID = records[0]
 	header.Start, err = time.ParseInLocation(headerDateFormat, records[2], parisLocation)
 	if err != nil {
 		err = fmt.Errorf("failed to parse start date from second line: %w", err)
@@ -139,9 +139,6 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 			Time:  recordTime,
 			Value: float64(recordValue) / 1000, // convert Wh to kWh
 		})
-		if recordTime.Year() == 0 {
-			fmt.Println("YEAR 0: line", line)
-		}
 	}
 	if errors.Is(err, io.EOF) {
 		err = nil
