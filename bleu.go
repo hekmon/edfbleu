@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -14,26 +15,26 @@ var (
 	prices2021 time.Time
 )
 
-func init() {
-	// get paris location
-	parisLocation, err := time.LoadLocation("Europe/Paris")
-	if err != nil {
-		panic(err)
-	}
+func prepareDates() (err error) {
 	// Last update
-	lastUpdate, err = time.ParseInLocation(pricesDateFormat, "08/12/2022", parisLocation)
+	lastUpdate, err = time.ParseInLocation(pricesDateFormat, "08/12/2022", frLocation)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to parse the last data update date: %w", err)
 	}
 	// setup prices start dates
-	prices2022, err = time.ParseInLocation(pricesDateFormat, "01/08/2022", parisLocation)
+	prices2022, err = time.ParseInLocation(pricesDateFormat, "01/08/2022", frLocation)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to parse the new prices august 2022 date: %w", err)
 	}
-	prices2021, err = time.ParseInLocation(pricesDateFormat, "01/08/2021", parisLocation)
+	prices2021, err = time.ParseInLocation(pricesDateFormat, "01/08/2021", frLocation)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to parse the new prices august 2021 date: %w", err)
 	}
+	// generate tempo days
+	if err = generateTempoDays(); err != nil {
+		return fmt.Errorf("failed to generate tempo days: %w", err)
+	}
+	return
 }
 
 func getBasePrice(datetime time.Time) float64 {

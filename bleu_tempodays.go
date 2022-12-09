@@ -18,12 +18,7 @@ var (
 	whiteDays []time.Time
 )
 
-func init() {
-	// get paris location
-	parisLocation, err := time.LoadLocation("Europe/Paris")
-	if err != nil {
-		panic(err)
-	}
+func generateTempoDays() (err error) {
 	// setup red days
 	var day time.Time
 	redDates := []string{
@@ -52,9 +47,9 @@ func init() {
 		"29/11/2021",
 	}
 	for index, redDate := range redDates {
-		day, err = time.ParseInLocation(pricesDateFormat, redDate, parisLocation)
+		day, err = time.ParseInLocation(pricesDateFormat, redDate, frLocation)
 		if err != nil {
-			panic(fmt.Sprintf("failed to parse tempo red day at index %d: %s", index, err))
+			return fmt.Errorf("failed to parse tempo red day at index %d: %s", index, err)
 		}
 		redDays = append(redDays, day)
 	}
@@ -111,12 +106,13 @@ func init() {
 		"23/11/2021",
 	}
 	for index, whiteDate := range whiteDates {
-		day, err = time.ParseInLocation(pricesDateFormat, whiteDate, parisLocation)
+		day, err = time.ParseInLocation(pricesDateFormat, whiteDate, frLocation)
 		if err != nil {
-			panic(fmt.Sprintf("failed to parse tempo white day at index %d: %s", index, err))
+			return fmt.Errorf("failed to parse tempo white day at index %d: %s", index, err)
 		}
 		whiteDays = append(whiteDays, day)
 	}
+	return
 }
 
 func getTempoDayColor(datetime time.Time) tempoDay {

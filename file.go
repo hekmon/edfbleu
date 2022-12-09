@@ -121,6 +121,7 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 			err = fmt.Errorf("failed to parse record date time: %w", err)
 			break
 		}
+		recordTime = recordTime.In(frLocation)
 		if recordValue, err = strconv.Atoi(records[1]); err != nil {
 			err = fmt.Errorf("failed to parse record value: %w", err)
 			break
