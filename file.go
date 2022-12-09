@@ -96,7 +96,7 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 		err = fmt.Errorf("failed to read the third line: %w", err)
 		return
 	}
-	// Process data
+	// Process data lines
 	var (
 		records     []string
 		line        int
@@ -116,7 +116,6 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 			err = fmt.Errorf("failed to parse record date time: %w", err)
 			break
 		}
-		recordTime = recordTime.In(frLocation)
 		if recordValue, err = strconv.Atoi(records[1]); err != nil {
 			err = fmt.Errorf("failed to parse record value: %w", err)
 			break
@@ -132,7 +131,7 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 		}
 		// save value
 		data = append(data, point{
-			Time:  recordTime,
+			Time:  recordTime.In(frLocation),   // make sure every date time in this program is in the same loc
 			Value: float64(recordValue) / 1000, // convert Wh to kWh
 		})
 	}
