@@ -39,6 +39,10 @@ func main() {
 		fmt.Println()
 	}
 	// Compute
+	compute(header, data, *detailsFlag)
+}
+
+func compute(header CSVHeader, data []point, montly bool) {
 	var (
 		totalBase, monthBase, pointBase    float64
 		totalHC, monthHC, pointHC          float64
@@ -64,7 +68,7 @@ func main() {
 			monthHC += pointHC
 			monthTempo += pointTempo
 		} else {
-			if *detailsFlag {
+			if montly {
 				// Print total for previous month
 				fmt.Println()
 				fmt.Printf("* %s %d\n", refMonth.Month(), refMonth.Year())
@@ -84,7 +88,7 @@ func main() {
 		totalTempo += pointTempo
 	}
 	// Print total for old month
-	if *detailsFlag {
+	if montly {
 		fmt.Println()
 		fmt.Printf("* %s %d\n", refMonth.Month(), refMonth.Year())
 		fmt.Printf("Option base:\t%0.2f€\n", monthBase)
