@@ -73,18 +73,13 @@ func parseHeader(cr *csv.Reader) (header CSVHeader, err error) {
 		err = fmt.Errorf("failed to read second line: %w", err)
 		return
 	}
-	parisLocation, err := time.LoadLocation("Europe/Paris")
-	if err != nil {
-		err = fmt.Errorf("failed to get paris timezone: %w", err)
-		return
-	}
 	header.PRMID = records[0]
-	header.Start, err = time.ParseInLocation(headerDateFormat, records[2], parisLocation)
+	header.Start, err = time.ParseInLocation(headerDateFormat, records[2], frLocation)
 	if err != nil {
 		err = fmt.Errorf("failed to parse start date from second line: %w", err)
 		return
 	}
-	header.End, err = time.ParseInLocation(headerDateFormat, records[3], parisLocation)
+	header.End, err = time.ParseInLocation(headerDateFormat, records[3], frLocation)
 	if err != nil {
 		err = fmt.Errorf("failed to parse end date from second line: %w", err)
 		return
