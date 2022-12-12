@@ -14,7 +14,7 @@ var (
 func main() {
 	// Parse flags
 	filePathFlag := flag.String("csv", "", "path to the Enedis hourly export file")
-	detailsFlag := flag.Bool("monthly", false, "show the montly details")
+	detailsFlag := flag.Bool("monthly", false, "show the monthly details")
 	flag.Parse()
 	if *filePathFlag == "" {
 		log.Fatalln("please set the -csv flag")
