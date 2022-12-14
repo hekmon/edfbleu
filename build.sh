@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
+version=$(date +%Y%m%d)
+
 crosscompile () {
-    version=$(date +%Y%m%d)
     GOOS="$1" GOARCH="$2" go build -v -ldflags="-X 'main.Version=${version}'" -o 'edfbleu'
     zip -9 "edfbleu_${version}_${1}_${2}.zip" 'edfbleu'
 }
@@ -21,3 +22,6 @@ echo
 echo '* Cleaning up'
 test -f edfbleu && rm edfbleu
 test -f edfbleu.exe && rm edfbleu.exe
+echo
+echo '* Tagging cmd (if needed)'
+echo "git tag ${version} && git push tags"
