@@ -17,7 +17,7 @@ var (
 
 func prepareDates() (err error) {
 	// Last update
-	lastUpdate, err = time.ParseInLocation(pricesDateFormat, "08/12/2022", frLocation)
+	lastUpdate, err = time.ParseInLocation(pricesDateFormat, "15/12/2022", frLocation)
 	if err != nil {
 		return fmt.Errorf("failed to parse the last data update date: %w", err)
 	}

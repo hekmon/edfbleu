@@ -18,10 +18,14 @@ var (
 	whiteDays []time.Time
 )
 
+// https://particulier.edf.fr/fr/accueil/gestion-contrat/options/tempo.html#/selection-bp
 func generateTempoDays() (err error) {
 	// setup red days
 	var day time.Time
 	redDates := []string{
+		"14/12/2022",
+		"13/12/2022",
+		"12/12/2022",
 		"08/12/2022",
 		"27/01/2022",
 		"26/01/2022",
@@ -55,6 +59,9 @@ func generateTempoDays() (err error) {
 	}
 	// setup white days
 	whiteDates := []string{
+		"15/12/2022",
+		"10/12/2022",
+		"09/12/2022",
 		"07/12/2022",
 		"06/12/2022",
 		"05/12/2022",
