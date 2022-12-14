@@ -9,16 +9,16 @@ import (
 
 var (
 	frLocation *time.Location
+	//  overrided during compilation
+	Version = "development"
 )
 
 func main() {
 	// Parse flags
 	filePathFlag := flag.String("csv", "", "path to the Enedis hourly export file")
 	detailsFlag := flag.Bool("monthly", false, "show the monthly details")
+	versionFlag := flag.Bool("version", false, "show the version details")
 	flag.Parse()
-	if *filePathFlag == "" {
-		log.Fatalln("please set the -csv flag")
-	}
 	// Prepare
 	var err error
 	if frLocation, err = time.LoadLocation("Europe/Paris"); err != nil {
@@ -26,6 +26,15 @@ func main() {
 	}
 	if err = prepareDates(); err != nil {
 		log.Fatalln(err)
+	}
+	// Act on flags
+	if *versionFlag {
+		fmt.Printf("Version:\t\t%s\n", Version)
+		fmt.Printf("Last known data:\t%d %s %d\n", lastUpdate.Day(), lastUpdate.Month(), lastUpdate.Year())
+		return
+	}
+	if *filePathFlag == "" {
+		log.Fatalln("please set the -csv flag")
 	}
 	// Parse the file as enedis csv
 	header, data, err := parseFile(*filePathFlag)

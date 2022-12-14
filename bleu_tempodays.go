@@ -19,6 +19,7 @@ var (
 )
 
 // https://particulier.edf.fr/fr/accueil/gestion-contrat/options/tempo.html#/selection-bp
+// maybe later: https://data.rte-france.com/catalog/-/api/doc/user-guide/Tempo+Like+Supply+Contract/1.1
 func generateTempoDays() (err error) {
 	// setup red days
 	var day time.Time
