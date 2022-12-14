@@ -19,3 +19,4 @@
 *.csv
 /edfbleu
 output.log
+*.zip
