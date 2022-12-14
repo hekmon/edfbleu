@@ -24,4 +24,4 @@ test -f edfbleu && rm edfbleu
 test -f edfbleu.exe && rm edfbleu.exe
 echo
 echo '* Tagging cmd (if needed)'
-echo "git tag ${version} && git push tags"
+echo "git tag ${version} && git push --tags"
