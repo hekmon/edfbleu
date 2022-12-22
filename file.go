@@ -111,6 +111,10 @@ func parseData(cr *csv.Reader) (data []point, err error) {
 			err = fmt.Errorf("failed to parse line: %w", err)
 			break
 		}
+		// skip recorp if empty
+		if records[1] == "" {
+			continue
+		}
 		// parse line
 		if recordTime, err = time.Parse(dataDateFormat, records[0]); err != nil {
 			err = fmt.Errorf("failed to parse record date time: %w", err)
