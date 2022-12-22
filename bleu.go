@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	lastDataUpdate   = "15/12/2022"
+	lastDataUpdate   = "23/12/2022"
 	pricesDateFormat = "02/01/2006"
 )
 
