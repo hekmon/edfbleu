@@ -3,7 +3,7 @@
 version=$(date +%Y%m%d)
 
 crosscompile () {
-    GOOS="$1" GOARCH="$2" go build -v -ldflags="-X 'main.Version=${version}'" -o 'edfbleu'
+    GOOS="$1" GOARCH="$2" go build -ldflags="-X 'main.Version=${version}'" -o 'edfbleu'
     zip -9 "edfbleu_${version}_${1}_${2}.zip" 'edfbleu'
 }
 
