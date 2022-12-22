@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 version=$(date +%Y%m%d)
 
 crosscompile () {
