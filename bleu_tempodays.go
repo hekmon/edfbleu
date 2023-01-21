@@ -24,6 +24,10 @@ func generateTempoDays() (err error) {
 	// setup red days
 	var day time.Time
 	redDates := []string{
+		"20/01/2023",
+		"19/01/2023",
+		"18/01/2023",
+		"17/01/2023",
 		"14/12/2022",
 		"13/12/2022",
 		"12/12/2022",
@@ -60,6 +64,8 @@ func generateTempoDays() (err error) {
 	}
 	// setup white days
 	whiteDates := []string{
+		"21/01/2023",
+		"16/01/2023",
 		"17/12/2022",
 		"16/12/2022",
 		"15/12/2022",
