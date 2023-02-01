@@ -18,12 +18,20 @@ var (
 	whiteDays []time.Time
 )
 
+// https://www.services-rte.com/fr/visualisez-les-donnees-publiees-par-rte/calendrier-des-offres-de-fourniture-de-type-tempo.html
 // https://particulier.edf.fr/fr/accueil/gestion-contrat/options/tempo.html#/selection-bp
 // maybe later: https://data.rte-france.com/catalog/-/api/doc/user-guide/Tempo+Like+Supply+Contract/1.1
 func generateTempoDays() (err error) {
 	// setup red days
 	var day time.Time
 	redDates := []string{
+		"31/01/2023",
+		"30/01/2023",
+		"27/01/2023",
+		"26/01/2023",
+		"25/01/2023",
+		"24/01/2023",
+		"23/01/2023",
 		"20/01/2023",
 		"19/01/2023",
 		"18/01/2023",
@@ -64,6 +72,8 @@ func generateTempoDays() (err error) {
 	}
 	// setup white days
 	whiteDates := []string{
+		"01/02/2023",
+		"28/01/2023",
 		"21/01/2023",
 		"16/01/2023",
 		"17/12/2022",
