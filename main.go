@@ -53,6 +53,7 @@ func main() {
 
 func compute(header CSVHeader, data []point, montly bool) {
 	var (
+		adjustedValue                      float64
 		totalBase, monthBase, pointBase    float64
 		totalHC, monthHC, pointHC          float64
 		totalTempo, monthTempo, pointTempo float64
@@ -61,16 +62,23 @@ func compute(header CSVHeader, data []point, montly bool) {
 	fmt.Printf("PRM:\t\t%s\n", header.PRMID)
 	fmt.Printf("Start:\t\t%v\n", header.Start)
 	fmt.Printf("End:\t\t%v\n", header.End)
+	fmt.Printf("Stepping:\t%v\n", header.Step)
 	for index, point := range data {
 		// Adjust time for start and not end
-		adjustedTime := point.Time.Add(enedisHourlyExportStep * -1)
+		adjustedTime := point.Time.Add(header.Step * -1)
 		if index == 0 {
 			refMonth = adjustedTime
 		}
+		// Adjust average watt consumption to kWh
+		if header.Step == steppingHour {
+			adjustedValue = point.Value
+		} else if header.Step == steppingHalfHour {
+			adjustedValue = point.Value / 2
+		}
 		// Compute price for current point
-		pointBase = point.Value * getBasePrice(adjustedTime)
-		pointHC = point.Value * getHCPrice(adjustedTime)
-		pointTempo = point.Value * getTempoPrice(adjustedTime)
+		pointBase = adjustedValue * getBasePrice(adjustedTime)
+		pointHC = adjustedValue * getHCPrice(adjustedTime)
+		pointTempo = adjustedValue * getTempoPrice(adjustedTime)
 		// Handle months
 		if refMonth.Year() == adjustedTime.Year() && refMonth.Month() == adjustedTime.Month() {
 			monthBase += pointBase
