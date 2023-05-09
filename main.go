@@ -54,7 +54,8 @@ func main() {
 
 func compute(header CSVHeader, data []point, montly bool) {
 	var (
-		adjustedValue                      float64
+		pointAdjustedConso                 float64
+		totalConso, monthConso             float64
 		totalBase, monthBase, pointBase    float64
 		totalHC, monthHC, pointHC          float64
 		totalTempo, monthTempo, pointTempo float64
@@ -72,27 +73,29 @@ func compute(header CSVHeader, data []point, montly bool) {
 		}
 		// Adjust average watt consumption to kWh
 		if header.Step == steppingHour {
-			adjustedValue = point.Value
+			pointAdjustedConso = point.Value
 		} else if header.Step == steppingHalfHour {
-			adjustedValue = point.Value / 2
+			pointAdjustedConso = point.Value / 2
 		} else {
 			fmt.Printf("unexpected stepping: %s", header.Step)
 			os.Exit(1)
 		}
 		// Compute price for current point
-		pointBase = adjustedValue * getBasePrice(adjustedTime)
-		pointHC = adjustedValue * getHCPrice(adjustedTime)
-		pointTempo = adjustedValue * getTempoPrice(adjustedTime)
+		pointBase = pointAdjustedConso * getBasePrice(adjustedTime)
+		pointHC = pointAdjustedConso * getHCPrice(adjustedTime)
+		pointTempo = pointAdjustedConso * getTempoPrice(adjustedTime)
 		// Handle months
 		if refMonth.Year() == adjustedTime.Year() && refMonth.Month() == adjustedTime.Month() {
 			monthBase += pointBase
 			monthHC += pointHC
 			monthTempo += pointTempo
+			monthConso += pointAdjustedConso
 		} else {
 			if montly {
 				// Print total for previous month
 				fmt.Println()
 				fmt.Printf("* %s %d\n", refMonth.Month(), refMonth.Year())
+				fmt.Printf("Consommation:\t~%0.2f kWh\n", monthConso)
 				fmt.Printf("Option base:\t%0.2f€\n", monthBase)
 				fmt.Printf("Option HC:\t%0.2f€\n", monthHC)
 				fmt.Printf("Option Tempo:\t%0.2f€\n", monthTempo)
@@ -101,9 +104,11 @@ func compute(header CSVHeader, data []point, montly bool) {
 			monthBase = pointBase
 			monthHC = pointHC
 			monthTempo = pointTempo
+			monthConso = pointAdjustedConso
 			refMonth = adjustedTime
 		}
 		// Add to total
+		totalConso += pointAdjustedConso
 		totalBase += pointBase
 		totalHC += pointHC
 		totalTempo += pointTempo
@@ -112,6 +117,7 @@ func compute(header CSVHeader, data []point, montly bool) {
 	if montly {
 		fmt.Println()
 		fmt.Printf("* %s %d\n", refMonth.Month(), refMonth.Year())
+		fmt.Printf("Consommation:\t~%0.2f kWh\n", monthConso)
 		fmt.Printf("Option base:\t%0.2f€\n", monthBase)
 		fmt.Printf("Option HC:\t%0.2f€\n", monthHC)
 		fmt.Printf("Option Tempo:\t%0.2f€\n", monthTempo)
@@ -119,6 +125,7 @@ func compute(header CSVHeader, data []point, montly bool) {
 	// Print total
 	fmt.Println()
 	fmt.Println("* TOTAL")
+	fmt.Printf("Consommation:\t~%0.2f kWh\n", totalConso)
 	fmt.Printf("Option base:\t%0.2f€\n", totalBase)
 	fmt.Printf("Option HC:\t%0.2f€\n", totalHC)
 	fmt.Printf("Option Tempo:\t%0.2f€\n", totalTempo)
