@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"time"
 )
 
@@ -74,6 +75,9 @@ func compute(header CSVHeader, data []point, montly bool) {
 			adjustedValue = point.Value
 		} else if header.Step == steppingHalfHour {
 			adjustedValue = point.Value / 2
+		} else {
+			fmt.Printf("unexpected stepping: %s", header.Step)
+			os.Exit(1)
 		}
 		// Compute price for current point
 		pointBase = adjustedValue * getBasePrice(adjustedTime)
