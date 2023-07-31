@@ -11,10 +11,11 @@ const (
 )
 
 var (
-	lastUpdate time.Time
-	prices2023 time.Time
-	prices2022 time.Time
-	prices2021 time.Time
+	lastUpdate   time.Time
+	prices2023   time.Time
+	prices022023 time.Time
+	prices2022   time.Time
+	prices2021   time.Time
 )
 
 func prepareDates() (err error) {
@@ -24,7 +25,11 @@ func prepareDates() (err error) {
 		return fmt.Errorf("failed to parse the last data update date: %w", err)
 	}
 	// setup prices start dates
-	prices2023, err = time.ParseInLocation(pricesDateFormat, "01/02/2023", frLocation)
+	prices2023, err = time.ParseInLocation(pricesDateFormat, "01/08/2023", frLocation)
+	if err != nil {
+		return fmt.Errorf("failed to parse the new prices August 2023 date: %w", err)
+	}
+	prices022023, err = time.ParseInLocation(pricesDateFormat, "01/02/2023", frLocation)
 	if err != nil {
 		return fmt.Errorf("failed to parse the new prices February 2023 date: %w", err)
 	}
@@ -45,6 +50,9 @@ func prepareDates() (err error) {
 
 func getBasePrice(datetime time.Time) float64 {
 	if datetime.After(prices2023) {
+		return 0.2276
+	}
+	if datetime.After(prices022023) {
 		return 0.2062
 	}
 	if datetime.After(prices2022) {
@@ -71,6 +79,12 @@ func getHCPrice(datetime time.Time) float64 {
 	}
 	// return price
 	if datetime.After(prices2023) {
+		if hc {
+			return 0.1828
+		}
+		return 0.2460
+	}
+	if datetime.After(prices022023) {
 		if hc {
 			return 0.1615
 		}
@@ -99,6 +113,25 @@ func getTempoPrice(datetime time.Time) float64 {
 	}
 	// return price
 	if datetime.After(prices2023) {
+		switch getTempoDayColor(datetime) {
+		case tempoRed:
+			if hc {
+				return 0.1328
+			}
+			return 0.7324
+		case tempoWhite:
+			if hc {
+				return 0.1246
+			}
+			return 0.1654
+		case tempoBlue:
+			if hc {
+				return 0.1056
+			}
+			return 0.1369
+		}
+	}
+	if datetime.After(prices022023) {
 		switch getTempoDayColor(datetime) {
 		case tempoRed:
 			if hc {
