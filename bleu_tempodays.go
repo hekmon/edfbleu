@@ -79,6 +79,9 @@ func generateTempoDays() (err error) {
 	}
 	// setup white days
 	whiteDates := []string{
+		"09/06/2023",
+		"08/06/2023",
+		"07/06/2023",
 		"26/04/2023",
 		"25/04/2023",
 		"13/04/2023",
