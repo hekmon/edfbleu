@@ -54,12 +54,13 @@ func main() {
 
 func compute(header CSVHeader, data []point, montly bool) {
 	var (
-		pointAdjustedConso                 float64
-		totalConso, monthConso             float64
-		totalBase, monthBase, pointBase    float64
-		totalHC, monthHC, pointHC          float64
-		totalTempo, monthTempo, pointTempo float64
-		refMonth                           time.Time
+		pointAdjustedConso                       float64
+		totalConso, monthConso                   float64
+		totalBase, monthBase, pointBase          float64
+		totalHC, monthHC, pointHC                float64
+		totalTempo, monthTempo, pointTempo       float64
+		totalZenFlex, monthZenFlex, pointZenFlex float64
+		refMonth                                 time.Time
 	)
 	fmt.Printf("PRM:\t\t%s\n", header.PRMID)
 	fmt.Printf("Start:\t\t%v\n", header.Start)
@@ -84,11 +85,13 @@ func compute(header CSVHeader, data []point, montly bool) {
 		pointBase = pointAdjustedConso * getBasePrice(adjustedTime)
 		pointHC = pointAdjustedConso * getHCPrice(adjustedTime)
 		pointTempo = pointAdjustedConso * getTempoPrice(adjustedTime)
+		pointZenFlex = pointAdjustedConso * getZenFlexPrice(adjustedTime)
 		// Handle months
 		if refMonth.Year() == adjustedTime.Year() && refMonth.Month() == adjustedTime.Month() {
 			monthBase += pointBase
 			monthHC += pointHC
 			monthTempo += pointTempo
+			monthZenFlex += pointZenFlex
 			monthConso += pointAdjustedConso
 		} else {
 			if montly {
@@ -99,11 +102,13 @@ func compute(header CSVHeader, data []point, montly bool) {
 				fmt.Printf("Option base:\t%0.2f€\n", monthBase)
 				fmt.Printf("Option HC:\t%0.2f€\n", monthHC)
 				fmt.Printf("Option Tempo:\t%0.2f€\n", monthTempo)
+				fmt.Printf("Zen Flex:\t%0.2f€\n", monthZenFlex)
 			}
 			// New month, reset counters
 			monthBase = pointBase
 			monthHC = pointHC
 			monthTempo = pointTempo
+			monthZenFlex = pointZenFlex
 			monthConso = pointAdjustedConso
 			refMonth = adjustedTime
 		}
@@ -112,6 +117,7 @@ func compute(header CSVHeader, data []point, montly bool) {
 		totalBase += pointBase
 		totalHC += pointHC
 		totalTempo += pointTempo
+		totalZenFlex += pointZenFlex
 	}
 	// Print total for old month
 	if montly {
@@ -121,6 +127,7 @@ func compute(header CSVHeader, data []point, montly bool) {
 		fmt.Printf("Option base:\t%0.2f€\n", monthBase)
 		fmt.Printf("Option HC:\t%0.2f€\n", monthHC)
 		fmt.Printf("Option Tempo:\t%0.2f€\n", monthTempo)
+		fmt.Printf("Zen Flex:\t%0.2f€\n", monthZenFlex)
 	}
 	// Print total
 	fmt.Println()
@@ -129,4 +136,5 @@ func compute(header CSVHeader, data []point, montly bool) {
 	fmt.Printf("Option base:\t%0.2f€\n", totalBase)
 	fmt.Printf("Option HC:\t%0.2f€\n", totalHC)
 	fmt.Printf("Option Tempo:\t%0.2f€\n", totalTempo)
+	fmt.Printf("Zen Flex:\t%0.2f€\n", totalZenFlex)
 }

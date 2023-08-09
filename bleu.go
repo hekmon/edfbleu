@@ -1,52 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"time"
 )
-
-const (
-	lastDataUpdate   = "09/08/2023"
-	pricesDateFormat = "02/01/2006"
-)
-
-var (
-	lastUpdate   time.Time
-	prices2023   time.Time
-	prices022023 time.Time
-	prices2022   time.Time
-	prices2021   time.Time
-)
-
-func prepareDates() (err error) {
-	// Last update
-	lastUpdate, err = time.ParseInLocation(pricesDateFormat, lastDataUpdate, frLocation)
-	if err != nil {
-		return fmt.Errorf("failed to parse the last data update date: %w", err)
-	}
-	// setup prices start dates
-	prices2023, err = time.ParseInLocation(pricesDateFormat, "01/08/2023", frLocation)
-	if err != nil {
-		return fmt.Errorf("failed to parse the new prices August 2023 date: %w", err)
-	}
-	prices022023, err = time.ParseInLocation(pricesDateFormat, "01/02/2023", frLocation)
-	if err != nil {
-		return fmt.Errorf("failed to parse the new prices February 2023 date: %w", err)
-	}
-	prices2022, err = time.ParseInLocation(pricesDateFormat, "01/08/2022", frLocation)
-	if err != nil {
-		return fmt.Errorf("failed to parse the new prices august 2022 date: %w", err)
-	}
-	prices2021, err = time.ParseInLocation(pricesDateFormat, "01/08/2021", frLocation)
-	if err != nil {
-		return fmt.Errorf("failed to parse the new prices august 2021 date: %w", err)
-	}
-	// generate tempo days
-	if err = generateTempoDays(); err != nil {
-		return fmt.Errorf("failed to generate tempo days: %w", err)
-	}
-	return
-}
 
 func getBasePrice(datetime time.Time) float64 {
 	if datetime.After(prices2023) {
