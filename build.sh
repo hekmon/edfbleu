@@ -5,8 +5,13 @@ set -e
 version=$(date +%Y%m%d)
 
 crosscompile () {
-    GOOS="$1" GOARCH="$2" go build -ldflags="-X 'main.Version=${version}'" -o 'edfbleu'
-    zip -9 "edfbleu_${version}_${1}_${2}.zip" 'edfbleu'
+    if [ "$1" == "windows" ]; then
+        name='edfbleu.exe'
+    else
+        name='edfbleu'
+    fi
+    GOOS="$1" GOARCH="$2" go build -ldflags="-X 'main.Version=${version}'" -o "$name"
+    zip -9 "edfbleu_${version}_${1}_${2}.zip" "$name"
 }
 
 echo '* Compiling for Windows'
