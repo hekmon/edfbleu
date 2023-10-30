@@ -7,10 +7,11 @@ version=$(date +%Y%m%d)
 crosscompile () {
     if [ "$1" == "windows" ]; then
         name='edfbleu.exe'
+        flags="-tags timetzdata"
     else
         name='edfbleu'
     fi
-    GOOS="$1" GOARCH="$2" go build -ldflags="-X 'main.Version=${version}'" -o "$name"
+    GOOS="$1" GOARCH="$2" go build -ldflags="-X 'main.Version=${version}'" -o "$name" $flags
     zip -9 "edfbleu_${version}_${1}_${2}.zip" "$name"
 }
 
