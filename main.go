@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"time"
 )
 
@@ -54,7 +53,6 @@ func main() {
 
 func compute(header CSVHeader, data []point, montly bool) {
 	var (
-		pointAdjustedConso                 float64
 		totalConso, monthConso             float64
 		totalBase, monthBase, pointBase    float64
 		totalHC, monthHC, pointHC          float64
@@ -64,32 +62,27 @@ func compute(header CSVHeader, data []point, montly bool) {
 	fmt.Printf("PRM:\t\t%s\n", header.PRMID)
 	fmt.Printf("Start:\t\t%v\n", header.Start)
 	fmt.Printf("End:\t\t%v\n", header.End)
-	fmt.Printf("Stepping:\t%v\n", header.Step)
+	if header.Step == noSteppingValue {
+		fmt.Printf("Stepping:\tnot fixed (automatically detected for each point)\n")
+	} else {
+		fmt.Printf("Stepping:\t%v\n", header.Step)
+	}
 	for index, point := range data {
 		// Adjust time for start and not end
 		adjustedTime := point.Time.Add(header.Step * -1)
 		if index == 0 {
 			refMonth = adjustedTime
 		}
-		// Adjust average watt consumption to kWh
-		if header.Step == steppingHour {
-			pointAdjustedConso = point.Value
-		} else if header.Step == steppingHalfHour {
-			pointAdjustedConso = point.Value / 2
-		} else {
-			fmt.Printf("unexpected stepping: %s", header.Step)
-			os.Exit(1)
-		}
 		// Compute price for current point
-		pointBase = pointAdjustedConso * getBasePrice(adjustedTime)
-		pointHC = pointAdjustedConso * getHCPrice(adjustedTime)
-		pointTempo = pointAdjustedConso * getTempoPrice(adjustedTime)
+		pointBase = point.Conso * getBasePrice(adjustedTime)
+		pointHC = point.Conso * getHCPrice(adjustedTime)
+		pointTempo = point.Conso * getTempoPrice(adjustedTime)
 		// Handle months
 		if refMonth.Year() == adjustedTime.Year() && refMonth.Month() == adjustedTime.Month() {
 			monthBase += pointBase
 			monthHC += pointHC
 			monthTempo += pointTempo
-			monthConso += pointAdjustedConso
+			monthConso += point.Conso
 		} else {
 			if montly {
 				// Print total for previous month
@@ -104,11 +97,11 @@ func compute(header CSVHeader, data []point, montly bool) {
 			monthBase = pointBase
 			monthHC = pointHC
 			monthTempo = pointTempo
-			monthConso = pointAdjustedConso
+			monthConso = point.Conso
 			refMonth = adjustedTime
 		}
 		// Add to total
-		totalConso += pointAdjustedConso
+		totalConso += point.Conso
 		totalBase += pointBase
 		totalHC += pointHC
 		totalTempo += pointTempo
