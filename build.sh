@@ -11,7 +11,7 @@ crosscompile () {
     else
         name='edfbleu'
     fi
-    GOOS="$1" GOARCH="$2" go build -ldflags="-X 'main.Version=${version}'" -o "$name" $flags
+    GOOS="$1" GOARCH="$2" go build -ldflags="-s -w -X 'main.Version=${version}'" -o "$name" $flags
     zip -9 "edfbleu_${version}_${1}_${2}.zip" "$name"
 }
 
