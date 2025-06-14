@@ -14,14 +14,14 @@ Ce programme vous permets de calculer localement le prix de votre consommation s
 
 #### Export de vos données
 
-Une fois la collecte activé et suffisamment de données disponibles, vous pouvez demander un export de vos données de consommation [ici](https://mon-compte-particulier.enedis.fr/suivi-de-mesures/?ajouter_telechargement=true). Faîtes bien attention à sélectionner `Consommation horaire` dans l'option types de données et à sélectionner une durée d'un an idéalement.
+Une fois la collecte activé et suffisamment de données disponibles, vous pouvez demander un export de vos données de consommation [ici](https://mon-compte-particulier.enedis.fr/suivi-de-mesures/?ajouter_telechargement=true). Faites bien attention à sélectionner `Consommation horaire` dans l'option types de données et à sélectionner une durée d'un an idéalement.
 * Attendre quelques minutes (cela peut être plus ou moins long).
 * Récupérer votre export [ici](https://mon-compte-particulier.enedis.fr/mes-telechargements-mesures/).
 
 ### Utilisation du programme
 
-* Récupérer une version du programme compilé dans les [releases](https://github.com/hekmon/edfbleu/releases) ou le compiler vous même avec `go build`.
-* Executer le programme en lui indiquant le chemin votre votre export de données Enedis (voir exemple ci dessous).
+* Récupérer une version du programme compilé dans les [releases](https://github.com/hekmon/edfbleu/releases) ou le compiler vous-même avec `go build`.
+* Executer le programme en lui indiquant le chemin de votre export de données Enedis (voir exemple ci-dessous).
 
 ```plain
 doudou@DGaming:~/go/edfbleu$ ./edfbleu -csv 'Enedis_Conso_Heure_20210901-20220831_XXXXXXXXXXXXXX.csv' -monthly
@@ -106,7 +106,7 @@ Différentes périodes d'heure creuses existent par commune (vous pouvez vérifi
 
 #### Jours rouges et blancs
 
-Ce programme n'utilise pas (encore ?) d'API pour récupérer les couleurs des jours. Pour le moment chacun des jours est enregistré rétrospectivement dans le programme et ces dates sont compilées au démarrage. Cela veut dire que celui-ci doit être régulièrement mis à jour (surtout en hiver). Si votre export de données contient des dates qui ne sont pas connues par le programme vous aurez le warning suivant:
+Ce programme n'utilise pas (encore ?) d'API pour récupérer les couleurs des jours. Pour le moment chacun des jours est enregistré rétrospectivement dans le programme et ces dates sont compilées au démarrage. Cela veut dire que celui-ci doit être régulièrement mis à jour (surtout en hiver). Si votre export de données contient des dates qui ne sont pas connues par le programme, vous aurez le warning suivant:
 
 ```plain
 /!\ the data set contains values that are beyong the internal data this program has. Please update the code.
@@ -116,4 +116,4 @@ Si vous le rencontrez, n'hésitez pas à ouvrir une [issue](https://github.com/h
 
 #### Consommation sous tempo
 
-Les valeurs que vous obtiendrez correspondent à votre consommation *passée* ou vous ne décaliez pas forcément votre consommation. Le but de tempo étant de vous encourager à décaller votre consommation en journée rouge (prix du kWh prohibitif), votre prix tempo sera certainement bien moins élevé si vous pouvez décaller vos consommations pendant ces plages horaires. Plus d'information sur tempo [ici](https://particulier.edf.fr/fr/accueil/gestion-contrat/options/tempo/details.html).
+Les valeurs que vous obtiendrez correspondent à votre consommation *passée* où vous ne décaliez pas forcément votre consommation. Le but de tempo étant de vous encourager à décaler votre consommation en journée rouge (prix du kWh prohibitif), votre prix tempo sera certainement bien moins élevé si vous décalez vos consommations pendant ces plages horaires. Plus d'information sur tempo [ici](https://particulier.edf.fr/fr/accueil/gestion-contrat/options/tempo/details.html).
