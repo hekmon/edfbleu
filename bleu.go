@@ -50,6 +50,8 @@ func prepareDates() (err error) {
 	if err = generateTempoDays(); err != nil {
 		return fmt.Errorf("failed to generate tempo days: %w", err)
 	}
+	// then try to refresh them from the API (compiled ones are kept as fallback)
+	updateTempoDaysFromAPI()
 	return
 }
 
