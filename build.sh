@@ -1,35 +1,42 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-version=$(date +%Y%m%d)
+cd "$(dirname "$0")"
+
+# set by each crosscompile: the version Go stamped in the binary just built
+version=""
 
 crosscompile () {
-    if [ "$1" == "windows" ]; then
+    local name flags
+    if [ "$2" == "windows" ]; then
         name='edfbleu.exe'
-        flags="-tags timetzdata"
+        flags='-tags timetzdata'
     else
         name='edfbleu'
+        flags=''
     fi
-    GOOS="$1" GOARCH="$2" go build -ldflags="-s -w -X 'main.Version=${version}'" -o "$name" $flags
-    zip -9 "edfbleu_${version}_${1}_${2}.zip" "$name"
+    echo "Compiling edfbleu for ${2}/${3}..."
+    # no cgo: static binaries, independent of the libc of the machine building them
+    CGO_ENABLED=0 GOOS="$2" GOARCH="$3" go build -trimpath -ldflags="-s -w" $flags -o "$name" .
+    # the version Go stamped, which --version reports (a tag, or a pseudo-version, "+dirty" for
+    # uncommitted changes), rather than git describe, which only agrees with it on a clean tag
+    version=$(go version -m "$name" | awk '$1 == "mod" { print $3 }')
+    zip -9 "edfbleu_${version}_${2}_${3}.zip" "$name"
+    rm "$name"
+    echo
 }
 
 echo '* Compiling for Windows'
-crosscompile 'windows' 'amd64'
-echo
+crosscompile 'edfbleu' 'windows' 'amd64'
 echo '* Compiling for MacOS Intel'
-crosscompile 'darwin' 'amd64'
-echo
+crosscompile 'edfbleu' 'darwin' 'amd64'
 echo '* Compiling for MacOS Apple Silicon'
-crosscompile 'darwin' 'arm64'
-echo
+crosscompile 'edfbleu' 'darwin' 'arm64'
 echo '* Compiling for Linux'
-crosscompile 'linux' 'amd64'
-echo
+crosscompile 'edfbleu' 'linux' 'amd64'
+
 echo '* Cleaning up'
 test -f edfbleu && rm edfbleu
 test -f edfbleu.exe && rm edfbleu.exe
 echo
-echo '* Tagging cmd (if needed)'
-echo "git tag ${version} && git push --tags"
