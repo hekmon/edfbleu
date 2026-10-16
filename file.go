@@ -105,7 +105,7 @@ func parseHeader(cr *csv.Reader) (header CSVHeader, err error) {
 
 func parseData(cr *csv.Reader, stepping time.Duration) (data []point, err error) {
 	// nb of records changes for data
-	cr.FieldsPerRecord = 2
+	cr.FieldsPerRecord = -1 // variable, some Enedis exports append trailing empty fields to data lines
 	// remove data header
 	_, err = cr.Read()
 	if err != nil {
@@ -130,6 +130,14 @@ func parseData(cr *csv.Reader, stepping time.Duration) (data []point, err error)
 		records, err = cr.Read()
 		if err != nil {
 			err = fmt.Errorf("failed to parse line: %w", err)
+			break
+		}
+		// tolerate trailing empty fields appended by some Enedis exports
+		for len(records) > 2 && records[len(records)-1] == "" {
+			records = records[:len(records)-1]
+		}
+		if len(records) != 2 {
+			err = fmt.Errorf("invalid data line, expecting 2 fields got %d: %s", len(records), strings.Join(records, ";"))
 			break
 		}
 		// skip recorp if empty
