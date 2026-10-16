@@ -29,6 +29,8 @@ crosscompile () {
 
 echo '* Compiling for Windows'
 crosscompile 'edfbleu' 'windows' 'amd64'
+echo '* Compiling for Windows ARM'
+crosscompile 'edfbleu' 'windows' 'arm64'
 echo '* Compiling for MacOS Intel'
 crosscompile 'edfbleu' 'darwin' 'amd64'
 echo '* Compiling for MacOS Apple Silicon'
