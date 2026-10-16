@@ -110,7 +110,7 @@ At startup, the program tries to fetch the Tempo day colors from [api-couleur-te
 
 #### Jours rouges et blancs
 
-Le programme tente de récupérer les couleurs des jours Tempo au démarrage depuis l'API décrite ci-dessus et retombe sur le calendrier compilé dans le binaire en cas d'indisponibilité (dernière mise à jour : 02/04/2024). Si votre export de données contient des dates qui ne sont pas connues par le programme (API indisponible ou dates au-delà du dernier jour décidé), vous aurez l'un des warnings suivants:
+Dans le cas nominal, aucun warning n'apparaît. Vous n'en verrez un que dans deux situations : l'API est indisponible et votre export dépasse le calendrier compilé de secours (02/04/2024), ou votre export contient des dates dont la couleur n'a pas encore été décidée par RTE — dans ce dernier cas, ces jours ne peuvent pas être tarifés correctement. Vous aurez alors l'un des warnings suivants:
 
 ```plain
 /!\ the data set contains values that are beyond the internal data this program has. Please update the code.
