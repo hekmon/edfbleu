@@ -183,7 +183,7 @@ func testHomeSheet() testXLSXSheet {
 func testDailySheet(comptage string, records ...testXLSXRow) testXLSXSheet {
 	sheet := testXLSXSheet{
 		{shared("B6", "Compte Client"), shared("E6", "Export des données de l'énergie")},
-		{shared("B8", "Point Référence Mesure (PRM) : "), shared("C8", "50050741158553"), shared("E8", "Type de comptage : "), shared("F8", comptage)},
+		{shared("B8", "Point Référence Mesure (PRM) : "), shared("C8", "30000000000000"), shared("E8", "Type de comptage : "), shared("F8", comptage)},
 		{shared("E9", "Date de début : "), shared("F9", "29/03/2025"), shared("E10", "Date de fin : "), shared("F10", "31/03/2025")},
 		{shared("B10", "NA"), shared("C10", "Données indisponibles")},
 		{shared("B14", "Date"), shared("C14", "Valeur (en kWh)")},
@@ -197,7 +197,7 @@ func testDailySheet(comptage string, records ...testXLSXRow) testXLSXSheet {
 func testHalfHourlySheet(records ...testXLSXRow) testXLSXSheet {
 	sheet := testXLSXSheet{
 		{shared("B6", "Compte Client"), shared("D6", "Export des données de la courbe de charge")},
-		{shared("B8", "Point Référence Mesure (PRM) : "), shared("C8", "50050741158553"), shared("D8", "Grandeur physique : "), shared("E8", "Puissance Active")},
+		{shared("B8", "Point Référence Mesure (PRM) : "), shared("C8", "30000000000000"), shared("D8", "Grandeur physique : "), shared("E8", "Puissance Active")},
 		{shared("D9", "Type de comptage : "), shared("E9", "Puissance moyenne soutirée")},
 		{shared("D10", "Date de début : "), shared("E10", "01/01/2025"), shared("D11", "Date de fin : "), shared("E11", "02/01/2025")},
 		{shared("B10", "NA"), shared("C10", "Données indisponibles")},
@@ -227,7 +227,7 @@ func TestParseXLSXDaily(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Header
-	if header.PRMID != "50050741158553" {
+	if header.PRMID != "30000000000000" {
 		t.Errorf("wrong PRM: %q", header.PRMID)
 	}
 	if !header.Daily {
@@ -293,7 +293,7 @@ func TestParseXLSXHalfHourly(t *testing.T) {
 	if header.Daily {
 		t.Error("half-hourly export detected as daily")
 	}
-	if header.PRMID != "50050741158553" {
+	if header.PRMID != "30000000000000" {
 		t.Errorf("wrong PRM: %q", header.PRMID)
 	}
 	start := time.Date(2025, 1, 1, 0, 0, 0, 0, frLocation)
@@ -356,7 +356,7 @@ func TestParseXLSXInlineStrings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if header.PRMID != "50050741158553" || len(data) != 1 || math.Abs(data[0].Conso-1.038*0.5) > 1e-9 {
+	if header.PRMID != "30000000000000" || len(data) != 1 || math.Abs(data[0].Conso-1.038*0.5) > 1e-9 {
 		t.Errorf("wrong parse of inline strings: PRM %q, %d records", header.PRMID, len(data))
 	}
 }
@@ -535,7 +535,7 @@ func TestParseCSVAndXLSXParity(t *testing.T) {
 	// The legacy CSV export (timestamps at the end of the periods, values in W)
 	var csv strings.Builder
 	fmt.Fprintln(&csv, "Identifiant PRM;Type de donnees;Date de debut;Date de fin;Grandeur physique;Unite;Pas;Nature;Pas en minutes")
-	fmt.Fprintln(&csv, "50050741158553;Consommation;01/01/2025;02/01/2025;Puissance moyenne soutirée;W;30;Brutes;30")
+	fmt.Fprintln(&csv, "30000000000000;Consommation;01/01/2025;02/01/2025;Puissance moyenne soutirée;W;30;Brutes;30")
 	fmt.Fprintln(&csv, "Horodate;Valeur")
 	for _, record := range records {
 		end, err := time.ParseInLocation(xlsxRecordDateFormat, record.end, frLocation)
