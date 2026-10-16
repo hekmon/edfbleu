@@ -93,13 +93,40 @@ func writeTestXLSX(t *testing.T, sheets []testXLSXSheet, inline bool) string {
 	}
 	defer fd.Close()
 	archive := zip.NewWriter(fd)
-	writeZipEntry(t, archive, "[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8"?><Types/>`)
+	// Package parts (content types, relationships and workbook index)
+	writeZipEntry(t, archive, "[Content_Types].xml", fmt.Sprintf(
+		`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`+
+			`<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>`+
+			`<Default Extension="xml" ContentType="application/xml"/>`+
+			`<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>`+
+			`<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>%s</Types>`,
+		strings.Join(contentTypesOverrides(len(worksheets)), "")))
+	writeZipEntry(t, archive, "_rels/.rels",
+		`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`+
+			`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`)
+	var sheetsXML, workbookRels []string
+	for index := range worksheets {
+		sheetsXML = append(sheetsXML, fmt.Sprintf(`<sheet name="Sheet%d" sheetId="%d" r:id="rId%d"/>`, index+1, index+1, index+1))
+		workbookRels = append(workbookRels, fmt.Sprintf(
+			`<Relationship Id="rId%d" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet%d.xml"/>`,
+			index+1, index+1))
+	}
+	workbookRels = append(workbookRels, fmt.Sprintf(
+		`<Relationship Id="rId%d" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>`,
+		len(worksheets)+1))
+	writeZipEntry(t, archive, "xl/workbook.xml", fmt.Sprintf(
+		`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>%s</sheets></workbook>`,
+		strings.Join(sheetsXML, "")))
+	writeZipEntry(t, archive, "xl/_rels/workbook.xml.rels", fmt.Sprintf(
+		`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">%s</Relationships>`,
+		strings.Join(workbookRels, "")))
+	// Shared string table (unless the text values are written as inline strings)
 	if !inline {
 		var items []string
 		for _, value := range sharedStrings {
 			items = append(items, `<si><t>`+xmlEscape(value)+`</t></si>`)
 		}
-		writeZipEntry(t, archive, xlsxSharedStringsPart, fmt.Sprintf(
+		writeZipEntry(t, archive, "xl/sharedStrings.xml", fmt.Sprintf(
 			`<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">%s</sst>`,
 			strings.Join(items, "")))
 	}
@@ -110,6 +137,16 @@ func writeTestXLSX(t *testing.T, sheets []testXLSXSheet, inline bool) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+// contentTypesOverrides builds the content types of the worksheet parts
+func contentTypesOverrides(count int) (overrides []string) {
+	for index := 1; index <= count; index++ {
+		overrides = append(overrides, fmt.Sprintf(
+			`<Override PartName="/xl/worksheets/sheet%d.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+			index))
+	}
+	return
 }
 
 func writeZipEntry(t *testing.T, archive *zip.Writer, name, content string) {

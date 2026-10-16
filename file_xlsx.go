@@ -1,22 +1,20 @@
 package main
 
 import (
-	"archive/zip"
-	"encoding/xml"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/xuri/excelize/v2"
 )
 
-// Minimal XLSX (Office Open XML) reader built on the standard library so this program keeps
-// having no external dependency: an XLSX file is a ZIP archive of XML parts, the ones of
-// interest here being the worksheets (the cells) and the shared string table (the text values
-// stored once and referenced by the cells). Only what is needed to read the Enedis exports is
-// implemented.
+// XLSX exports of the Enedis web portal are read with excelize. Two exports are supported:
+// the daily energy export and the half-hourly load curve export, both being detected from the
+// column labels of their data sheet rather than from the file names.
 
 const (
-	xlsxSharedStringsPart = "xl/sharedStrings.xml"
 	// column labels of the data sheet of the daily Enedis export ("Export Consommation Quotidienne")
 	xlsxDailyDateLabel  = "Date"
 	xlsxDailyValueLabel = "Valeur (en kWh)"
@@ -30,7 +28,7 @@ const (
 	xlsxMissingValue     = "NA"                  // legend: "Données indisponibles"
 	xlsxPRMLength        = 14                    // a PRM is a 14 digits number
 	// daily exports deliver one record per day, spread over half-hours to be priced
-	dailyRecordStep = 24 * time.Hour
+	dailyRecordStep  = 24 * time.Hour
 	dailySpreadStep = 30 * time.Minute
 )
 
@@ -39,8 +37,8 @@ const (
 // labels of the data sheet
 func parseXLSXFile(path string) (header FileHeader, data []point, err error) {
 	// Read the worksheets
-	var sheets [][]xlsxRow
-	if sheets, err = readXLSX(path); err != nil {
+	var sheets []xlsxSheet
+	if sheets, err = readXLSXSheets(path); err != nil {
 		err = fmt.Errorf("failed to read the XLSX file: %w", err)
 		return
 	}
@@ -71,10 +69,15 @@ func parseXLSXFile(path string) (header FileHeader, data []point, err error) {
 	return
 }
 
-// xlsxRow is a worksheet row: the cell values by spreadsheet column letter ("B", "AC", ...)
+// xlsxSheet is a worksheet of an XLSX export: its rows of cell values by column index
+type xlsxSheet struct {
+	rows []xlsxRow
+}
+
+// xlsxRow is a worksheet row: the cell values by spreadsheet column index (0 is the A column)
 type xlsxRow struct {
 	num   int
-	cells map[string]string
+	cells map[int]string
 }
 
 // xlsxDataSheet locates the data records within a worksheet of an Enedis export
@@ -83,18 +86,51 @@ type xlsxDataSheet struct {
 	daily     bool
 	headerRow int // index of the row holding the column labels in rows
 	// columns holding the data fields
-	dateCol, startCol, endCol, valueCol string
+	dateCol, startCol, endCol, valueCol int
+}
+
+// readXLSXSheets extracts the cell values of every worksheet of an XLSX file with excelize.
+// The raw cell values are used so the values are read the way Enedis stores them: the display
+// formats of the spreadsheet (like the French decimal comma) are not applied.
+func readXLSXSheets(path string) (sheets []xlsxSheet, err error) {
+	var workbook *excelize.File
+	if workbook, err = excelize.OpenFile(path, excelize.Options{RawCellValue: true}); err != nil {
+		return
+	}
+	defer workbook.Close()
+	for _, name := range workbook.GetSheetList() {
+		var rows [][]string
+		if rows, err = workbook.GetRows(name); err != nil {
+			err = fmt.Errorf("failed to read the worksheet %q: %w", name, err)
+			return
+		}
+		sheet := xlsxSheet{rows: make([]xlsxRow, 0, len(rows))}
+		for index, values := range rows {
+			row := xlsxRow{num: index + 1, cells: make(map[int]string)}
+			for column, value := range values {
+				if value != "" {
+					row.cells[column] = value
+				}
+			}
+			sheet.rows = append(sheet.rows, row)
+		}
+		sheets = append(sheets, sheet)
+	}
+	if len(sheets) == 0 {
+		err = fmt.Errorf("no worksheet in the XLSX file")
+	}
+	return
 }
 
 // selectXLSXDataSheet picks the worksheet holding the consumption records among the worksheets
 // of an export: dual metering exports also carry a production sheet which can not be priced here
-func selectXLSXDataSheet(path string, sheets [][]xlsxRow) (sheet xlsxDataSheet, err error) {
+func selectXLSXDataSheet(path string, sheets []xlsxSheet) (sheet xlsxDataSheet, err error) {
 	var candidates, consumption []xlsxDataSheet
-	for _, rows := range sheets {
-		if candidate := detectXLSXDataSheet(rows); candidate != nil {
-			candidates = append(candidates, *candidate)
-			if candidate.isConsumption() {
-				consumption = append(consumption, *candidate)
+	for _, candidate := range sheets {
+		if detected := detectXLSXDataSheet(candidate); detected != nil {
+			candidates = append(candidates, *detected)
+			if detected.isConsumption() {
+				consumption = append(consumption, *detected)
 			}
 		}
 	}
@@ -114,31 +150,37 @@ func selectXLSXDataSheet(path string, sheets [][]xlsxRow) (sheet xlsxDataSheet, 
 // detectXLSXDataSheet returns the layout of the data of a worksheet, or nil if the worksheet
 // does not carry one of the supported Enedis exports. The layout is detected from the column
 // labels so it does not depend on the exact rows and columns the export uses.
-func detectXLSXDataSheet(rows []xlsxRow) *xlsxDataSheet {
-	for index, row := range rows {
-		labels := make(map[string]string) // column label -> column letters
+func detectXLSXDataSheet(sheet xlsxSheet) *xlsxDataSheet {
+	for index, row := range sheet.rows {
+		labels := make(map[string]int) // column label -> column index
 		for column, value := range row.cells {
 			switch value {
 			case xlsxDailyDateLabel, xlsxDailyValueLabel, xlsxStartLabel, xlsxEndLabel, xlsxValueLabel:
 				labels[value] = column
 			}
 		}
-		if labels[xlsxDailyDateLabel] != "" && labels[xlsxDailyValueLabel] != "" {
-			return &xlsxDataSheet{
-				rows:      rows,
-				daily:     true,
-				headerRow: index,
-				dateCol:   labels[xlsxDailyDateLabel],
-				valueCol:  labels[xlsxDailyValueLabel],
+		if dateCol, foundDate := labels[xlsxDailyDateLabel]; foundDate {
+			if valueCol, foundValue := labels[xlsxDailyValueLabel]; foundValue {
+				return &xlsxDataSheet{
+					rows:      sheet.rows,
+					daily:     true,
+					headerRow: index,
+					dateCol:   dateCol,
+					valueCol:  valueCol,
+				}
 			}
 		}
-		if labels[xlsxStartLabel] != "" && labels[xlsxEndLabel] != "" && labels[xlsxValueLabel] != "" {
-			return &xlsxDataSheet{
-				rows:      rows,
-				headerRow: index,
-				startCol:  labels[xlsxStartLabel],
-				endCol:    labels[xlsxEndLabel],
-				valueCol:  labels[xlsxValueLabel],
+		if startCol, foundStart := labels[xlsxStartLabel]; foundStart {
+			if endCol, foundEnd := labels[xlsxEndLabel]; foundEnd {
+				if valueCol, foundValue := labels[xlsxValueLabel]; foundValue {
+					return &xlsxDataSheet{
+						rows:      sheet.rows,
+						headerRow: index,
+						startCol:  startCol,
+						endCol:    endCol,
+						valueCol:  valueCol,
+					}
+				}
 			}
 		}
 	}
@@ -163,7 +205,12 @@ func (sheet xlsxDataSheet) isConsumption() bool {
 // labels, or an empty string when it can not be found
 func (sheet xlsxDataSheet) findPRM() string {
 	for _, row := range sheet.rows[:sheet.headerRow] {
-		for _, column := range sortedColumns(row.cells) {
+		columns := make([]int, 0, len(row.cells))
+		for column := range row.cells {
+			columns = append(columns, column)
+		}
+		sort.Ints(columns)
+		for _, column := range columns {
 			if isPRM(row.cells[column]) {
 				return row.cells[column]
 			}
@@ -285,213 +332,6 @@ func (sheet xlsxDataSheet) parseHalfHourlyRecords() (step time.Duration, data []
 	}
 	if uniformDuration != noSteppingValue {
 		step = uniformDuration
-	}
-	return
-}
-
-// readXLSX extracts the cell values of every worksheet of an XLSX file, as rows of values by
-// column letters. Text values are resolved from the shared string table when there is one.
-func readXLSX(path string) (sheets [][]xlsxRow, err error) {
-	archive, err := zip.OpenReader(path)
-	if err != nil {
-		return
-	}
-	defer archive.Close()
-	// Shared string table (text values are stored once and referenced by the cells)
-	var sharedStrings []string
-	for _, part := range archive.File {
-		if part.Name == xlsxSharedStringsPart {
-			if sharedStrings, err = readXLSXSharedStrings(part); err != nil {
-				err = fmt.Errorf("failed to read %s: %w", part.Name, err)
-				return
-			}
-		}
-	}
-	// Worksheets
-	for _, part := range archive.File {
-		if !isXLSXWorksheet(part.Name) {
-			continue
-		}
-		var rows []xlsxRow
-		if rows, err = readXLSXWorksheet(part, sharedStrings); err != nil {
-			err = fmt.Errorf("failed to read %s: %w", part.Name, err)
-			return
-		}
-		sheets = append(sheets, rows)
-	}
-	if len(sheets) == 0 {
-		err = fmt.Errorf("no worksheet in the XLSX archive")
-	}
-	return
-}
-
-// isXLSXWorksheet tells if a ZIP entry of an XLSX archive is a worksheet (chartsheets and
-// relations are not)
-func isXLSXWorksheet(name string) bool {
-	return strings.HasPrefix(name, "xl/worksheets/") &&
-		strings.HasSuffix(name, ".xml") &&
-		!strings.Contains(name, "_rels")
-}
-
-// readXLSXSharedStrings reads the shared string table of an XLSX file
-func readXLSXSharedStrings(part *zip.File) (sharedStrings []string, err error) {
-	fd, err := part.Open()
-	if err != nil {
-		return
-	}
-	defer fd.Close()
-	var table struct {
-		Items []xlsxText `xml:"si"`
-	}
-	if err = xml.NewDecoder(fd).Decode(&table); err != nil {
-		return
-	}
-	sharedStrings = make([]string, len(table.Items))
-	for index, item := range table.Items {
-		sharedStrings[index] = item.text
-	}
-	return
-}
-
-// readXLSXWorksheet reads the cells of a worksheet of an XLSX file
-func readXLSXWorksheet(part *zip.File, sharedStrings []string) (rows []xlsxRow, err error) {
-	fd, err := part.Open()
-	if err != nil {
-		return
-	}
-	defer fd.Close()
-	var sheet struct {
-		Rows []xlsxRowXML `xml:"sheetData>row"`
-	}
-	if err = xml.NewDecoder(fd).Decode(&sheet); err != nil {
-		return
-	}
-	rows = make([]xlsxRow, 0, len(sheet.Rows))
-	for index, rowXML := range sheet.Rows {
-		row := xlsxRow{num: rowXML.Num, cells: make(map[string]string)}
-		if row.num == 0 {
-			row.num = index + 1 // missing row numbers are renumbered in order
-		}
-		for position, cellXML := range rowXML.Cells {
-			var value string
-			if value, err = cellXML.text(sharedStrings); err != nil {
-				err = fmt.Errorf("cell %s: %w", cellXML.Ref, err)
-				return
-			}
-			if value == "" {
-				continue
-			}
-			row.cells[xlsxColumn(cellXML.Ref, position)] = value
-		}
-		rows = append(rows, row)
-	}
-	return
-}
-
-// xlsxRowXML is a worksheet row as stored in a worksheet part
-type xlsxRowXML struct {
-	Num   int           `xml:"r,attr"`
-	Cells []xlsxCellXML `xml:"c"`
-}
-
-// xlsxCellXML is a worksheet cell as stored in a worksheet part
-type xlsxCellXML struct {
-	Ref    string   `xml:"r,attr"`
-	Type   string   `xml:"t,attr"`
-	Value  string   `xml:"v"`
-	Inline xlsxText `xml:"is"`
-}
-
-// text returns the value of a cell as text: numbers are returned as-is and strings are
-// resolved from the shared string table when needed
-func (cell xlsxCellXML) text(sharedStrings []string) (string, error) {
-	switch cell.Type {
-	case "s": // shared string: the value holds the index in the shared string table
-		index, err := strconv.Atoi(strings.TrimSpace(cell.Value))
-		if err != nil || index < 0 || index >= len(sharedStrings) {
-			return "", fmt.Errorf("invalid shared string reference %q", cell.Value)
-		}
-		return sharedStrings[index], nil
-	case "inlineStr": // inline string: the text is stored in the cell itself
-		return cell.Inline.text, nil
-	default: // number (empty type) or formula result (str): the value holds the text
-		return cell.Value, nil
-	}
-}
-
-// xlsxText collects the text of a string element of an XLSX part: both plain strings
-// (<t>text</t>) and rich strings made of several runs (<r><t>text</t></r>...) are supported
-type xlsxText struct {
-	text string
-}
-
-// UnmarshalXML walks through the element and concatenates the text of every <t> below it
-func (t *xlsxText) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) (err error) {
-	var text strings.Builder
-	for {
-		var token xml.Token
-		if token, err = decoder.Token(); err != nil {
-			return
-		}
-		switch element := token.(type) {
-		case xml.StartElement:
-			if element.Name.Local == "t" {
-				var part string
-				if err = decoder.DecodeElement(&part, &element); err != nil {
-					return
-				}
-				text.WriteString(part)
-			}
-			// any other element (rich text runs, run properties, ...) is walked through
-		case xml.EndElement:
-			if element.Name.Local == start.Name.Local {
-				t.text = text.String()
-				return
-			}
-		}
-	}
-}
-
-// xlsxColumn returns the spreadsheet column letters of a cell reference (the "B12" reference
-// is in the "B" column), falling back on the position of the cell within its row when the
-// reference is missing
-func xlsxColumn(ref string, position int) string {
-	end := 0
-	for end < len(ref) && isXLSXColumnLetter(ref[end]) {
-		end++
-	}
-	if end == 0 {
-		return xlsxColumnName(position)
-	}
-	return strings.ToUpper(ref[:end])
-}
-
-// isXLSXColumnLetter tells if a character can be part of a spreadsheet column name
-func isXLSXColumnLetter(char byte) bool {
-	return (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z')
-}
-
-// xlsxColumnName returns the spreadsheet column letters of a column position (0 is A, 26 is AA)
-func xlsxColumnName(position int) string {
-	name := ""
-	for {
-		name = string(rune('A'+position%26)) + name
-		position = position/26 - 1
-		if position < 0 {
-			return name
-		}
-	}
-}
-
-// sortedColumns returns the column letters of a row in spreadsheet order
-func sortedColumns(cells map[string]string) (columns []string) {
-	for column := range cells {
-		columns = append(columns, column)
-	}
-	for index := 1; index < len(columns); index++ {
-		for cursor := index; cursor > 0 && columns[cursor] < columns[cursor-1]; cursor-- {
-			columns[cursor], columns[cursor-1] = columns[cursor-1], columns[cursor]
-		}
 	}
 	return
 }
