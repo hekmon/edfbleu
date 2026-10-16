@@ -110,13 +110,13 @@ At startup, the program tries to fetch the Tempo day colors from [api-couleur-te
 
 #### Jours rouges et blancs
 
-Ce programme n'utilise pas (encore ?) d'API pour récupérer les couleurs des jours. Pour le moment chacun des jours est enregistré rétrospectivement dans le programme et ces dates sont compilées au démarrage. Cela veut dire que celui-ci doit être régulièrement mis à jour (surtout en hiver). Si votre export de données contient des dates qui ne sont pas connues par le programme, vous aurez le warning suivant:
+Le programme tente de récupérer les couleurs des jours Tempo au démarrage depuis l'API décrite ci-dessus et retombe sur le calendrier compilé dans le binaire en cas d'indisponibilité (dernière mise à jour : 02/04/2024). Si votre export de données contient des dates qui ne sont pas connues par le programme (API indisponible ou dates au-delà du dernier jour décidé), vous aurez l'un des warnings suivants:
 
 ```plain
 /!\ the data set contains values that are beyond the internal data this program has. Please update the code.
 ```
 
-Si vous le rencontrez, n'hésitez pas à ouvrir une [issue](https://github.com/hekmon/edfbleu/issues) ou une [pull request](https://github.com/hekmon/edfbleu/pulls) afin de mettre à jour le programme.
+Si vous rencontrez l'un de ces warnings, n'hésitez pas à ouvrir une [issue](https://github.com/hekmon/edfbleu/issues) ou une [pull request](https://github.com/hekmon/edfbleu/pulls) afin d'en discuter.
 
 #### Consommation sous tempo
 
