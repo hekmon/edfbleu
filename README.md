@@ -1,6 +1,16 @@
 # Simulateur EDF Tarifs Bleu
 
-Ce programme vous permets de calculer localement le prix de votre consommation sur les 3 différents tarifs réglémentés "bleu" d'EDF (base, heures creuses et tempo) à partir d'un export de vos données depuis le site d'Enedis.
+Ce programme vous permet de calculer localement le prix de votre consommation sur les 3 différents tarifs réglementés "bleu" d'EDF (base, heures creuses et tempo) à partir d'un export de vos données depuis le site d'Enedis.
+
+## À savoir avant de commencer
+
+Suite à la refonte du site Enedis, l'export horaire complet en un seul fichier n'est plus disponible. Selon votre situation :
+
+* **Option base** : un export de consommation quotidienne couvrant toute la période suffit, en un seul fichier — calcul exact.
+* **Options heures creuses et tempo** : il faut l'export « courbe de charge » (demi-heure), que Enedis limite à **7 jours par téléchargement**. Couvrir une an représente ~52 téléchargements manuels, deux ans plus d'une centaine. Cette limite est imposée par la nouvelle interface Enedis, pas par ce programme.
+* **Archives de l'ancien export CSV horaire** (d'avant la refonte) : pleinement supportées — toute la période en une seule commande.
+
+En clair : pour vérifier rétroactivement une longue période en heures creuses ou tempo à partir du seul portail Enedis, ce programme ne vous fera pas gagner de temps. Pour une consommation en option base, ou si vous avez conservé des exports CSV, il fait le travail.
 
 ## Utilisation
 
@@ -10,11 +20,11 @@ Ce programme vous permets de calculer localement le prix de votre consommation s
 
 * Avoir un compteur Linky (sans cela vos données de consommation ne peuvent être mesurées et exportées).
 * Avoir activé l'enregistrement et la collecte de la consommation horaire [ici](https://mon-compte-particulier.enedis.fr/donnees/).
-* Attendre suffisement longtemps pour avoir une collection importante de données (idéalement 1 an pour le calcul tempo).
+* Attendre suffisamment longtemps pour avoir une collection importante de données (idéalement 1 an pour le calcul tempo).
 
 #### Export de vos données
 
-Une fois la collecte activé et suffisamment de données disponibles, vous pouvez demander un export de vos données de consommation [ici](https://mon-compte-particulier.enedis.fr/suivi-de-mesures/?ajouter_telechargement=true). Deux types d'exports sont disponibles, au format `.xlsx` :
+Une fois la collecte activée et suffisamment de données disponibles, vous pouvez demander un export de vos données de consommation [ici](https://mon-compte-particulier.enedis.fr/suivi-de-mesures/?ajouter_telechargement=true). Deux types d'exports sont disponibles, au format `.xlsx` :
 
 * La **consommation quotidienne** (`Export_energie_...xlsx`) : la consommation totale de chaque jour, sur la période de votre choix en un seul fichier. Le détail intra-journée n'y figure cependant pas : seul l'option base peut être tarifée avec cet export (voir la note correspondante plus bas).
 * La **courbe de charge** (`Export_courbe_de_charge_...xlsx`) : la consommation par pas de 30 minutes, qui permet un calcul exact pour toutes les options. Attention, Enedis limite ces exports à **7 jours par téléchargement** : pour couvrir une longue période, téléchargez donc plusieurs exports hebdomadaires, le programme sait les fusionner (voir plus bas).
