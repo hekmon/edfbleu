@@ -2,6 +2,8 @@
 
 Ce programme vous permet de calculer localement le prix de votre consommation sur les 3 différents tarifs réglementés "bleu" d'EDF (base, heures creuses et tempo) à partir d'un export de vos données depuis le site d'Enedis.
 
+À partir du 1er février 2026, le prix du kWh en option base dépend de la puissance souscrite (3-6 kVA ou 9 kVA et plus) : ce programme utilise la grille 3-6 kVA.
+
 ## À savoir avant de commencer
 
 Suite à la refonte du site Enedis, l'export horaire complet en un seul fichier n'est plus disponible. Selon votre situation :
