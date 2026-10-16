@@ -27,9 +27,8 @@ const (
 	xlsxRecordDateFormat = "02/01/2006 15:04:05" // 31/12/2021 00:30:00
 	xlsxMissingValue     = "NA"                  // legend: "Données indisponibles"
 	xlsxPRMLength        = 14                    // a PRM is a 14 digits number
-	// daily exports deliver one record per day, spread over half-hours to be priced
-	dailyRecordStep  = 24 * time.Hour
-	dailySpreadStep = 30 * time.Minute
+	// daily exports deliver one record per day
+	dailyRecordStep = 24 * time.Hour
 )
 
 // parseXLSXFile parses a XLSX export of the Enedis web portal: both the daily energy export and
@@ -232,9 +231,10 @@ func isPRM(value string) bool {
 	return true
 }
 
-// parseDailyRecords parses the daily records of a daily energy export and spreads each day
-// uniformly over its half-hours: the intraday profile being unknown, this is an approximation
-// (see the README), the base option being the only exact result
+// parseDailyRecords parses the daily records of a daily energy export: one record per day,
+// covering the whole day (23h, 24h or 25h across daylight saving time changes). The intraday
+// consumption profile is not part of the export: only the base option can price these records
+// exactly, the HC/HP and Tempo options are refused (see priceRecords).
 func (sheet xlsxDataSheet) parseDailyRecords() (data []point, err error) {
 	for _, row := range sheet.rows[sheet.headerRow+1:] {
 		date := row.cells[sheet.dateCol]
@@ -255,29 +255,13 @@ func (sheet xlsxDataSheet) parseDailyRecords() (data []point, err error) {
 			err = fmt.Errorf("invalid daily record value %q on row %d: %w", value, row.num, err)
 			return
 		}
-		data = append(data, spreadDay(day, kwh)...)
-	}
-	return
-}
-
-// spreadDay splits the daily consumption of a day uniformly over its half-hours so daily
-// records can be priced with the half-hourly pricing pipeline. The day length is the real one
-// (23h, 24h or 25h across daylight saving time changes) and its half-hours tile it exactly.
-func spreadDay(day time.Time, kwh float64) (data []point) {
-	end := day.AddDate(0, 0, 1) // next midnight, daylight saving time safe
-	dayDuration := end.Sub(day)
-	for start := day; start.Before(end); start = start.Add(dailySpreadStep) {
-		sliceEnd := start.Add(dailySpreadStep)
-		if sliceEnd.After(end) {
-			sliceEnd = end
-		}
-		duration := sliceEnd.Sub(start)
-		conso := kwh * float64(duration) / float64(dayDuration)
+		end := day.AddDate(0, 0, 1) // next midnight, daylight saving time safe
+		duration := end.Sub(day)
 		data = append(data, point{
-			Time:     sliceEnd,
+			Time:     end,
 			Duration: duration,
-			Value:    conso / duration.Hours(), // kW average power over the slice
-			Conso:    conso,
+			Value:    kwh / duration.Hours(), // kW average power over the day
+			Conso:    kwh,
 		})
 	}
 	return

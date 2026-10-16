@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -243,38 +244,28 @@ func TestParseXLSXDaily(t *testing.T) {
 	if !header.End.Equal(end) {
 		t.Errorf("wrong end: %v instead of %v", header.End, end)
 	}
-	// Records: 2 days of 24h and one 23h day, spread over half-hours (the unavailable days are skipped)
-	if len(data) != 48+46+48 {
-		t.Fatalf("wrong record count: %d instead of %d", len(data), 48+46+48)
+	// Records: one record per available day (the unavailable days are skipped), each covering
+	// the real length of its day: 24h, then 23h across the daylight saving time change, then 24h
+	if len(data) != 3 {
+		t.Fatalf("wrong record count: %d instead of 3", len(data))
 	}
-	for _, record := range data {
-		if record.Duration != dailySpreadStep {
-			t.Fatalf("unexpected record duration: %v", record.Duration)
+	wanted := []point{
+		{Time: time.Date(2025, 3, 30, 0, 0, 0, 0, frLocation), Duration: 24 * time.Hour, Conso: 12.5},
+		{Time: time.Date(2025, 3, 31, 0, 0, 0, 0, frLocation), Duration: 23 * time.Hour, Conso: 13.5},
+		{Time: time.Date(2025, 4, 1, 0, 0, 0, 0, frLocation), Duration: 24 * time.Hour, Conso: 11},
+	}
+	for index, want := range wanted {
+		got := data[index]
+		if !got.Time.Equal(want.Time) || got.Duration != want.Duration {
+			t.Errorf("record %d: got %v (%v) instead of %v (%v)", index, got.Time, got.Duration, want.Time, want.Duration)
+		}
+		if math.Abs(got.Conso-want.Conso) > 1e-9 {
+			t.Errorf("record %d: got %f kWh instead of %f", index, got.Conso, want.Conso)
 		}
 	}
-	var sum float64
-	for _, record := range data {
-		sum += record.Conso
-	}
-	expectedTotal := 12.5 + 13.5 + 11
-	if math.Abs(sum-expectedTotal) > 1e-9 {
-		t.Errorf("wrong consumption total: %f instead of %f", sum, expectedTotal)
-	}
-	// The first day must account for exactly 12.5 kWh over its 48 half-hours
-	var firstDay float64
-	for _, record := range data[:48] {
-		firstDay += record.Conso
-	}
-	if math.Abs(firstDay-12.5) > 1e-9 {
-		t.Errorf("wrong first day consumption: %f instead of 12.5", firstDay)
-	}
-	// The daylight saving time day must spread over the real length of the day (23h = 46 half-hours)
-	var dstDay float64
-	for _, record := range data[48 : 48+46] {
-		dstDay += record.Conso
-	}
-	if math.Abs(dstDay-13.5) > 1e-9 {
-		t.Errorf("wrong daylight saving time day consumption: %f instead of 13.5", dstDay)
+	// The daily consumption is spread over the day as an average power
+	if math.Abs(data[1].Value-13.5/23) > 1e-9 {
+		t.Errorf("wrong average power for the 23h day: %f instead of %f", data[1].Value, 13.5/23)
 	}
 	// The records must tile the days exactly
 	for index := 1; index < len(data); index++ {
@@ -404,11 +395,54 @@ func TestParseXLSXDualMetering(t *testing.T) {
 	}
 }
 
+func TestDailyTariffRefusal(t *testing.T) {
+	// A daily-energy export can be priced under the base option only: the HC/HP and Tempo
+	// options need the intraday consumption profile and are refused, not approximated
+	path := writeTestXLSX(t, []testXLSXSheet{
+		testDailySheet("Consommation Quotidienne",
+			testXLSXRow{shared("B", "29/03/2025"), number("C", "12.5")},
+			testXLSXRow{shared("B", "30/03/2025"), number("C", "13.5")},
+		),
+	}, false)
+	header, data, err := parseXLSXFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Base pricing works on daily records
+	total, months, err := priceRecords(header, data, optionBase)
+	if err != nil {
+		t.Fatalf("the base option should price daily records: %v", err)
+	}
+	var expected float64
+	for _, record := range data {
+		expected += record.Conso * getBasePrice(record.Time.Add(-record.Duration))
+	}
+	if math.Abs(total-expected) > 1e-9 {
+		t.Errorf("wrong base total: %f instead of %f", total, expected)
+	}
+	var monthConso float64
+	for _, month := range months {
+		monthConso += month.Conso
+	}
+	if math.Abs(monthConso-26) > 1e-9 {
+		t.Errorf("wrong monthly consumption total: %f instead of 26", monthConso)
+	}
+	// HC/HP pricing is refused
+	if _, _, err = priceRecords(header, data, optionHC); !errors.Is(err, errDailyIntradayRequired) {
+		t.Errorf("the HC/HP option should be refused on daily records, got %v", err)
+	}
+	// Tempo pricing is refused
+	if _, _, err = priceRecords(header, data, optionTempo); !errors.Is(err, errDailyIntradayRequired) {
+		t.Errorf("the Tempo option should be refused on daily records, got %v", err)
+	}
+}
+
 func TestMergeFiles(t *testing.T) {
 	day := func(hour int, duration time.Duration) point {
 		return point{
 			Time:     time.Date(2025, 1, 1, hour, 0, 0, 0, frLocation),
 			Duration: duration,
+			Value:    1,
 		}
 	}
 	base := parsedFile{
@@ -519,6 +553,80 @@ func TestParseCSVAndXLSXParity(t *testing.T) {
 		}
 		if math.Abs(csvData[index].Conso-xlsxData[index].Conso) > 1e-9 {
 			t.Errorf("record %d consumption mismatch: %f vs %f", index, csvData[index].Conso, xlsxData[index].Conso)
+		}
+	}
+}
+
+/*
+	Parity checks on real Enedis exports
+
+	The sample exports contain personal data (a PRM identifier) so they can not be committed:
+	the tests reading them are skipped unless the EDFBLEU_TEST_DAILY_FILE and
+	EDFBLEU_TEST_LOADCURVE_FILE environment variables point to local copies of such exports.
+*/
+
+func TestRealDailyExport(t *testing.T) {
+	path := os.Getenv("EDFBLEU_TEST_DAILY_FILE")
+	if path == "" {
+		t.Skip("set EDFBLEU_TEST_DAILY_FILE to a real Enedis daily energy export to run this test")
+	}
+	header, data, err := parseFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !header.Daily {
+		t.Fatal("real daily export not detected as daily")
+	}
+	// 653 days from 01/01/2025 to 15/10/2026 without gaps
+	if len(data) != 653 {
+		t.Errorf("wrong record count: %d instead of 653", len(data))
+	}
+	var sum float64
+	for _, record := range data {
+		sum += record.Conso
+	}
+	if math.Abs(sum-10632.85) > 0.005 {
+		t.Errorf("wrong consumption total: %f instead of 10632.85", sum)
+	}
+	// The base option is priced, the HC/HP and Tempo options are refused
+	if _, _, err = priceRecords(header, data, optionBase); err != nil {
+		t.Errorf("the base option should price the real daily export: %v", err)
+	}
+	if _, _, err = priceRecords(header, data, optionTempo); !errors.Is(err, errDailyIntradayRequired) {
+		t.Errorf("the Tempo option should be refused on the real daily export, got %v", err)
+	}
+}
+
+func TestRealLoadCurveExport(t *testing.T) {
+	path := os.Getenv("EDFBLEU_TEST_LOADCURVE_FILE")
+	if path == "" {
+		t.Skip("set EDFBLEU_TEST_LOADCURVE_FILE to a real Enedis half-hourly load curve export to run this test")
+	}
+	header, data, err := parseFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if header.Daily {
+		t.Fatal("real load curve export detected as daily")
+	}
+	// 7 days of half-hourly records
+	if len(data) != 336 {
+		t.Errorf("wrong record count: %d instead of 336", len(data))
+	}
+	if header.Step != 30*time.Minute {
+		t.Errorf("wrong stepping: %v", header.Step)
+	}
+	var sum float64
+	for _, record := range data {
+		sum += record.Conso
+	}
+	if math.Abs(sum-114.90) > 0.005 {
+		t.Errorf("wrong consumption total: %f instead of 114.90", sum)
+	}
+	// Every option can price a load curve export
+	for _, option := range []tariffOption{optionBase, optionHC, optionTempo} {
+		if _, _, err = priceRecords(header, data, option); err != nil {
+			t.Errorf("the %s option should price the real load curve export: %v", option.name, err)
 		}
 	}
 }
