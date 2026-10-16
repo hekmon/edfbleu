@@ -6,12 +6,16 @@ import (
 )
 
 const (
-	lastDataUpdate   = "02/04/2024"
+	lastDataUpdate   = "17/10/2026"
 	pricesDateFormat = "02/01/2006"
 )
 
 var (
 	lastUpdate   time.Time
+	prices0826   time.Time
+	prices0226   time.Time
+	prices0825   time.Time
+	prices0225   time.Time
 	prices2024   time.Time
 	prices2023   time.Time
 	prices022023 time.Time
@@ -26,6 +30,22 @@ func prepareDates() (err error) {
 		return fmt.Errorf("failed to parse the last data update date: %w", err)
 	}
 	// setup prices start dates
+	prices0826, err = time.ParseInLocation(pricesDateFormat, "01/08/2026", frLocation)
+	if err != nil {
+		return fmt.Errorf("failed to parse the new prices August 2026 date: %w", err)
+	}
+	prices0226, err = time.ParseInLocation(pricesDateFormat, "01/02/2026", frLocation)
+	if err != nil {
+		return fmt.Errorf("failed to parse the new prices February 2026 date: %w", err)
+	}
+	prices0825, err = time.ParseInLocation(pricesDateFormat, "01/08/2025", frLocation)
+	if err != nil {
+		return fmt.Errorf("failed to parse the new prices August 2025 date: %w", err)
+	}
+	prices0225, err = time.ParseInLocation(pricesDateFormat, "01/02/2025", frLocation)
+	if err != nil {
+		return fmt.Errorf("failed to parse the new prices February 2025 date: %w", err)
+	}
 	prices2024, err = time.ParseInLocation(pricesDateFormat, "01/02/2024", frLocation)
 	if err != nil {
 		return fmt.Errorf("failed to parse the new prices February 2024 date: %w", err)
@@ -56,6 +76,18 @@ func prepareDates() (err error) {
 }
 
 func getBasePrice(datetime time.Time) float64 {
+	if datetime.After(prices0826) {
+		return 0.2001
+	}
+	if datetime.After(prices0226) {
+		return 0.1940
+	}
+	if datetime.After(prices0825) {
+		return 0.1952
+	}
+	if datetime.After(prices0225) {
+		return 0.2016
+	}
 	if datetime.After(prices2024) {
 		return 0.2516
 	}
@@ -88,6 +120,30 @@ func getHCPrice(datetime time.Time) float64 {
 		}
 	}
 	// return price
+	if datetime.After(prices0826) {
+		if hc {
+			return 0.1589
+		}
+		return 0.2142
+	}
+	if datetime.After(prices0226) {
+		if hc {
+			return 0.1579
+		}
+		return 0.2065
+	}
+	if datetime.After(prices0825) {
+		if hc {
+			return 0.1635
+		}
+		return 0.2081
+	}
+	if datetime.After(prices0225) {
+		if hc {
+			return 0.1696
+		}
+		return 0.2146
+	}
 	if datetime.After(prices2024) {
 		if hc {
 			return 0.2068
@@ -128,6 +184,82 @@ func getTempoPrice(datetime time.Time) float64 {
 		hc = true
 	}
 	// return price
+	if datetime.After(prices0826) {
+		switch getTempoDayColor(datetime) {
+		case tempoRed:
+			if hc {
+				return 0.1615
+			}
+			return 0.7295
+		case tempoWhite:
+			if hc {
+				return 0.1536
+			}
+			return 0.1921
+		case tempoBlue:
+			if hc {
+				return 0.1356
+			}
+			return 0.1654
+		}
+	}
+	if datetime.After(prices0226) {
+		switch getTempoDayColor(datetime) {
+		case tempoRed:
+			if hc {
+				return 0.1575
+			}
+			return 0.7060
+		case tempoWhite:
+			if hc {
+				return 0.1499
+			}
+			return 0.1871
+		case tempoBlue:
+			if hc {
+				return 0.1325
+			}
+			return 0.1612
+		}
+	}
+	if datetime.After(prices0825) {
+		switch getTempoDayColor(datetime) {
+		case tempoRed:
+			if hc {
+				return 0.1460
+			}
+			return 0.6468
+		case tempoWhite:
+			if hc {
+				return 0.1391
+			}
+			return 0.1730
+		case tempoBlue:
+			if hc {
+				return 0.1232
+			}
+			return 0.1494
+		}
+	}
+	if datetime.After(prices0225) {
+		switch getTempoDayColor(datetime) {
+		case tempoRed:
+			if hc {
+				return 0.1518
+			}
+			return 0.6586
+		case tempoWhite:
+			if hc {
+				return 0.1447
+			}
+			return 0.1792
+		case tempoBlue:
+			if hc {
+				return 0.1288
+			}
+			return 0.1552
+		}
+	}
 	if datetime.After(prices2024) {
 		switch getTempoDayColor(datetime) {
 		case tempoRed:

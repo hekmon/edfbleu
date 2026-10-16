@@ -2,6 +2,8 @@
 
 Ce programme vous permet de calculer localement le prix de votre consommation sur les 3 différents tarifs réglementés "bleu" d'EDF (base, heures creuses et tempo) à partir d'un export de vos données depuis le site d'Enedis.
 
+À partir du 1er février 2026, le prix du kWh en option base dépend de la puissance souscrite (3-6 kVA ou 9 kVA et plus) : ce programme utilise la grille 3-6 kVA.
+
 ## À savoir avant de commencer
 
 Suite à la refonte du site Enedis, l'export horaire complet en un seul fichier n'est plus disponible. Selon votre situation :
@@ -102,11 +104,11 @@ Les exports `.xlsx` (quotidiens et courbes de charge) sont lus avec la biblioth�
 
 #### Tempo calendar fetch
 
-At startup, the program tries to fetch the Tempo day colors from [api-couleur-tempo.fr](https://www.api-couleur-tempo.fr/), a free third-party API serving the RTE Tempo data (RTE remains the source of truth). If the API is unavailable, the program falls back to the Tempo calendar compiled into the binary (last update: 02/04/2024) and prints a warning: the fetch itself never makes the program fail. Days which have not been decided yet have no color and can not be priced: the program warns you when your data set goes beyond the last decided day.
+At startup, the program tries to fetch the Tempo day colors from [api-couleur-tempo.fr](https://www.api-couleur-tempo.fr/), a free third-party API serving the RTE Tempo data (RTE remains the source of truth). If the API is unavailable, the program falls back to the Tempo calendar compiled into the binary (last update: 17/10/2026) and prints a warning: the fetch itself never makes the program fail. Days which have not been decided yet have no color and can not be priced: the program warns you when your data set goes beyond the last decided day.
 
 #### Jours rouges et blancs
 
-Dans le cas nominal, aucun warning n'apparaît. Vous n'en verrez un que dans deux situations : l'API est indisponible et votre export dépasse le calendrier compilé de secours (02/04/2024), ou votre export contient des dates dont la couleur n'a pas encore été décidée par RTE — dans ce dernier cas, ces jours ne peuvent pas être tarifés correctement. Vous aurez alors l'un des warnings suivants:
+Dans le cas nominal, aucun warning n'apparaît. Vous n'en verrez un que dans deux situations : l'API est indisponible et votre export dépasse le calendrier compilé de secours (17/10/2026), ou votre export contient des dates dont la couleur n'a pas encore été décidée par RTE — dans ce dernier cas, ces jours ne peuvent pas être tarifés correctement. Vous aurez alors l'un des warnings suivants:
 
 ```plain
 /!\ the data set contains values that are beyond the internal data this program has. Please update the code.
