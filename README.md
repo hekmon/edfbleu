@@ -116,6 +116,10 @@ Le programme tente de récupérer les couleurs des jours Tempo au démarrage dep
 /!\ the data set contains values that are beyond the internal data this program has. Please update the code.
 ```
 
+```plain
+/!\ the data set contains values that are beyond the last tempo day decided so far (17/10/2026): the color of the next days does not exist yet so they can not be priced.
+```
+
 Si vous rencontrez l'un de ces warnings, n'hésitez pas à ouvrir une [issue](https://github.com/hekmon/edfbleu/issues) ou une [pull request](https://github.com/hekmon/edfbleu/pulls) afin d'en discuter.
 
 #### Consommation sous tempo
