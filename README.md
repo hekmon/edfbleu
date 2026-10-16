@@ -7,7 +7,7 @@ Ce programme vous permet de calculer localement le prix de votre consommation su
 Suite à la refonte du site Enedis, l'export horaire complet en un seul fichier n'est plus disponible. Selon votre situation :
 
 * **Option base** : un export de consommation quotidienne couvrant toute la période suffit, en un seul fichier — calcul exact.
-* **Options heures creuses et tempo** : il faut l'export « courbe de charge » (demi-heure), que Enedis limite à **7 jours par téléchargement**. Couvrir une an représente ~52 téléchargements manuels, deux ans plus d'une centaine. Cette limite est imposée par la nouvelle interface Enedis, pas par ce programme.
+* **Options heures creuses et tempo** : il faut l'export « courbe de charge » (demi-heure), que Enedis limite à **7 jours par téléchargement**. Couvrir un an représente ~52 téléchargements manuels, deux ans plus d'une centaine. Cette limite est imposée par la nouvelle interface Enedis, pas par ce programme.
 * **Archives de l'ancien export CSV horaire** (d'avant la refonte) : pleinement supportées — toute la période en une seule commande.
 
 En clair : pour vérifier rétroactivement une longue période en heures creuses ou tempo à partir du seul portail Enedis, ce programme ne vous fera pas gagner de temps. Pour une consommation en option base, ou si vous avez conservé des exports CSV, il fait le travail.
