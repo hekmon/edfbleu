@@ -16,8 +16,8 @@ Ce programme vous permets de calculer localement le prix de votre consommation s
 
 Une fois la collecte activé et suffisamment de données disponibles, vous pouvez demander un export de vos données de consommation [ici](https://mon-compte-particulier.enedis.fr/suivi-de-mesures/?ajouter_telechargement=true). Deux types d'exports sont disponibles, au format `.xlsx` :
 
-* La **consommation quotidienne** (`Export_energie_...xlsx`) : la consommation totale de chaque jour, sur la période de votre choix en un seul fichier. Le détail intra-journée n'y figure cependant pas (voir la note correspondante plus bas).
-* La **courbe de charge** (`Export_courbe_de_charge_...xlsx`) : la consommation par pas de 30 minutes, qui permet un calcul exact. Attention, Enedis limite ces exports à **7 jours par téléchargement** : pour couvrir une longue période, téléchargez donc plusieurs exports hebdomadaires, le programme sait les fusionner (voir plus bas).
+* La **consommation quotidienne** (`Export_energie_...xlsx`) : la consommation totale de chaque jour, sur la période de votre choix en un seul fichier. Le détail intra-journée n'y figure cependant pas : seul l'option base peut être tarifée avec cet export (voir la note correspondante plus bas).
+* La **courbe de charge** (`Export_courbe_de_charge_...xlsx`) : la consommation par pas de 30 minutes, qui permet un calcul exact pour toutes les options. Attention, Enedis limite ces exports à **7 jours par téléchargement** : pour couvrir une longue période, téléchargez donc plusieurs exports hebdomadaires, le programme sait les fusionner (voir plus bas).
 
 Puis :
 * Attendre quelques minutes (cela peut être plus ou moins long).
@@ -53,13 +53,10 @@ Option Tempo:   82.67€
 doudou@DGaming:~/go/edfbleu$
 ```
 
-Exemple avec un export de consommation quotidienne (le programme prévient alors que les montants HC/HP et Tempo sont approximatifs, voir la note correspondante plus bas) :
+Exemple avec un export de consommation quotidienne (seul l'option base peut être tarifée, voir la note correspondante plus bas ; le programme s'arrête alors sur une erreur après avoir affiché le résultat de l'option base) :
 
 ```plain
 doudou@DGaming:~/go/edfbleu$ ./edfbleu consommation_quotidienne.xlsx
-
-/!\ daily export: the intraday consumption profile is unknown so each day has been spread uniformly over its half-hours. The base option is exact but the HC/HP and Tempo amounts are approximations.
-
 PRM:            12345678901234
 Start:          2025-01-01 00:00:00 +0100 CET
 End:            2025-04-01 00:00:00 +0200 CEST
@@ -68,9 +65,9 @@ Stepping:       24h0m0s
 * TOTAL
 Consommation:   ~1416.75 kWh
 Option base:    356.46€
-Option HC:      352.71€
-Option Tempo:   308.60€
-doudou@DGaming:~/go/edfbleu$
+2025/04/02 10:12:43 daily-energy exports cannot be priced under HC/HP or Tempo: per-period consumption is not available, use the half-hourly load-curve export
+doudou@DGaming:~/go/edfbleu$ echo $?
+1
 ```
 
 ## Notes
@@ -81,11 +78,15 @@ Différentes périodes d'heure creuses existent par commune (vous pouvez vérifi
 
 ### Exports quotidiens
 
-L'export de consommation quotidienne ne contient que la consommation totale de chaque jour : la répartition de votre consommation au cours de la journée (heures creuses/heures pleines et plages tempo) n'y figure pas. Le programme répartit donc chaque jour uniformément sur ses demi-heures pour effectuer les calculs : l'option base reste exacte, mais les montants des options heures creuses et tempo sont des approximations. Pour des résultats exacts, utilisez les exports de courbe de charge (demi-heure).
+L'export de consommation quotidienne ne contient que la consommation totale de chaque jour : la répartition de votre consommation au cours de la journée (heures creuses/heures pleines et plages tempo) n'y figure pas. L'option base peut être tarifée exactement avec ces seules données, mais les montants des options heures creuses et tempo ne peuvent pas être calculés sans le détail intra-journée : au lieu de les approximer, le programme les refuse et s'arrête avec un message d'erreur explicite après avoir affiché le résultat de l'option base. Pour tarifer les options heures creuses et tempo, utilisez les exports de courbe de charge (demi-heure).
 
 ### Fusion de plusieurs exports
 
-Le programme accepte plusieurs fichiers en entrée : leurs données sont fusionnées puis tarifées ensemble, ce qui permet de couvrir une longue période avec les exports hebdomadaires de courbe de charge. Tous les fichiers doivent porter sur le même PRM et le même type d'export (les exports quotidiens et les exports de courbe de charge ne peuvent pas être mélangés). Si deux exports couvrent des périodes qui se recouvrent, le programme s'arrête en signalant l'anomalie ; si des enregistrements manquent, un warning vous prévient que la consommation de ces périodes n'est pas comptée.
+Le programme accepte plusieurs fichiers en entrée : leurs données sont fusionnées puis tarifées ensemble, ce qui permet de couvrir une longue période avec les exports hebdomadaires de courbe de charge. Tous les fichiers doivent porter sur le même PRM et le même type d'export (les exports quotidiens et les exports de courbe de charge ne peuvent pas être mélangés). Si deux exports couvrent des périodes qui se recouvrent (par exemple des fenêtres de 7 jours qui partagent leurs jours de bord), les enregistrements en double sont automatiquement dédupliqués — la valeur du premier fichier passé en argument est conservée — et un warning récapitulatif indique combien d'enregistrements ont été écartés. Si en revanche des enregistrements portant sur la même période ont des valeurs différentes, le programme s'arrête en signalant l'anomalie. Enfin, si des enregistrements manquent entre deux fichiers, un warning vous prévient que la consommation de ces périodes n'est pas comptée.
+
+### Format des fichiers
+
+Les exports `.xlsx` (quotidiens et courbes de charge) sont lus avec la bibliothèque Go [excelize](https://github.com/xuri/excelize). Le type d'export est détecté à partir des en-têtes de colonnes de la feuille de données, pas du nom du fichier : les exports en double comptage (consommation et production) sont également gérés, seule la feuille de consommation étant tarifée.
 
 ### Jours tempo
 
