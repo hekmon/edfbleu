@@ -13,7 +13,7 @@ var (
 
 func main() {
 	// Parse flags
-	filePathFlag := flag.String("csv", "", "path to the Enedis hourly export file")
+	filePathFlag := flag.String("csv", "", "path to an Enedis export file (legacy flag: input files can also be passed as arguments)")
 	detailsFlag := flag.Bool("monthly", false, "show the monthly details")
 	versionFlag := flag.Bool("version", false, "show the version details")
 	flag.Parse()
@@ -31,13 +31,23 @@ func main() {
 		fmt.Printf("Last known data:\t%d %s %d\n", lastUpdate.Day(), lastUpdate.Month(), lastUpdate.Year())
 		return
 	}
-	if *filePathFlag == "" {
-		log.Fatalln("please set the -csv flag")
+	if *filePathFlag == "" && flag.NArg() == 0 {
+		log.Fatalln("please provide at least one Enedis export file (CSV or XLSX), either with the -csv flag or as argument(s)")
 	}
-	// Parse the file as enedis csv
-	header, data, err := parseFile(*filePathFlag)
+	// Parse the input files as enedis exports (the legacy CSV and the XLSX of the web portal)
+	paths := flag.Args()
+	if *filePathFlag != "" {
+		paths = append([]string{*filePathFlag}, paths...)
+	}
+	header, data, err := parseFiles(paths)
 	if err != nil {
 		log.Fatal(err)
+	}
+	// Warn about daily data approximation
+	if header.Daily {
+		fmt.Println()
+		fmt.Println("/!\\ daily export: the intraday consumption profile is unknown so each day has been spread uniformly over its half-hours. The base option is exact but the HC/HP and Tempo amounts are approximations.")
+		fmt.Println()
 	}
 	// Issue warning if our data is outdated
 	if usingAPIData {
@@ -55,7 +65,7 @@ func main() {
 	compute(header, data, *detailsFlag)
 }
 
-func compute(header CSVHeader, data []point, montly bool) {
+func compute(header FileHeader, data []point, montly bool) {
 	var (
 		totalConso, monthConso             float64
 		totalBase, monthBase, pointBase    float64
@@ -73,7 +83,7 @@ func compute(header CSVHeader, data []point, montly bool) {
 	}
 	for index, point := range data {
 		// Adjust time for start and not end
-		adjustedTime := point.Time.Add(header.Step * -1)
+		adjustedTime := point.Time.Add(-point.Duration)
 		if index == 0 {
 			refMonth = adjustedTime
 		}

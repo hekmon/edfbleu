@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -21,20 +23,117 @@ const (
 	defaultStepping    = 30 * time.Minute
 )
 
-type CSVHeader struct {
+// FileHeader summarizes the content of a parsed input file
+type FileHeader struct {
 	PRMID string
 	Start time.Time
 	End   time.Time
-	Step  time.Duration
+	Step  time.Duration // time between records (noSteppingValue when it is not fixed)
+	Daily bool          // records are daily aggregates without intraday details
 }
 
+// point is a consumption record: the average power and the energy consumed over a period of
+// time ending at Time and lasting Duration (Enedis timestamps the end of the periods)
 type point struct {
-	Time  time.Time
-	Value float64 // kW
-	Conso float64 // kWh
+	Time     time.Time
+	Duration time.Duration
+	Value    float64 // kW average power over the period
+	Conso    float64 // kWh consumed over the period
 }
 
-func parseFile(path string) (header CSVHeader, data []point, err error) {
+// parsedFile associates an input file with its parsed header and records
+type parsedFile struct {
+	path   string
+	header FileHeader
+	data   []point
+}
+
+// parseFile parses an Enedis export file: the legacy CSV export and the XLSX exports of the
+// current Enedis web portal (daily and half-hourly) are supported
+func parseFile(path string) (header FileHeader, data []point, err error) {
+	if strings.EqualFold(filepath.Ext(path), ".xlsx") {
+		return parseXLSXFile(path)
+	}
+	return parseCSVFile(path)
+}
+
+// parseFiles parses several Enedis export files and merges them into a single data set
+func parseFiles(paths []string) (header FileHeader, data []point, err error) {
+	if len(paths) == 0 {
+		err = fmt.Errorf("no input file provided")
+		return
+	}
+	files := make([]parsedFile, 0, len(paths))
+	for _, path := range paths {
+		var file parsedFile
+		file.path = path
+		if file.header, file.data, err = parseFile(path); err != nil {
+			err = fmt.Errorf("failed to parse %s: %w", path, err)
+			return
+		}
+		files = append(files, file)
+	}
+	return mergeFiles(files)
+}
+
+// mergeFiles merges the records of several parsed input files into a single data set sorted
+// chronologically. All the files must cover the same PRM and use the same kind of records.
+func mergeFiles(files []parsedFile) (header FileHeader, data []point, err error) {
+	if len(files) == 0 {
+		err = fmt.Errorf("no input file to merge")
+		return
+	}
+	// Check that the files can be merged
+	header = files[0].header
+	header.Start, header.End = files[0].header.Start, files[0].header.End
+	for _, file := range files[1:] {
+		if file.header.Daily != header.Daily {
+			err = fmt.Errorf("can not mix daily and half-hourly exports (%s and %s)", files[0].path, file.path)
+			return
+		}
+		if file.header.PRMID != "" && header.PRMID != "" && file.header.PRMID != header.PRMID {
+			err = fmt.Errorf("can not mix exports from different PRMs (%s: %s and %s: %s)", files[0].path, header.PRMID, file.path, file.header.PRMID)
+			return
+		}
+		if header.PRMID == "" {
+			header.PRMID = file.header.PRMID
+		}
+		if file.header.Step != header.Step {
+			header.Step = noSteppingValue
+		}
+		if file.header.Start.Before(header.Start) {
+			header.Start = file.header.Start
+		}
+		if file.header.End.After(header.End) {
+			header.End = file.header.End
+		}
+	}
+	// Gather all the records and sort them chronologically
+	for _, file := range files {
+		data = append(data, file.data...)
+	}
+	sort.Slice(data, func(i, j int) bool {
+		return data[i].Time.Before(data[j].Time)
+	})
+	// Check for overlapping files and warn about missing records
+	for index := 1; index < len(data); index++ {
+		previous, current := data[index-1], data[index]
+		if current.Time == previous.Time {
+			err = fmt.Errorf("overlapping input files: several records end at %v", current.Time)
+			return
+		}
+		gap := current.Time.Add(-current.Duration).Sub(previous.Time)
+		if gap > 0 && gap >= previous.Duration {
+			fmt.Printf("/!\\ missing data between %v and %v: the consumption of this period is not accounted for\n", previous.Time, current.Time.Add(-current.Duration))
+		}
+	}
+	if len(data) == 0 {
+		err = fmt.Errorf("no data record found in the input files")
+	}
+	return
+}
+
+func parseCSVFile(path string) (header FileHeader, data []point, err error) {
 	// Prepare the CSV reader
 	fd, err := os.Open(path)
 	if err != nil {
@@ -46,19 +145,19 @@ func parseFile(path string) (header CSVHeader, data []point, err error) {
 	cr.Comma = enedisCustomCSVSep
 	cr.ReuseRecord = true
 	// Parse the header
-	if header, err = parseHeader(cr); err != nil {
+	if header, err = parseCSVHeader(cr); err != nil {
 		err = fmt.Errorf("failed to parse header: %w", err)
 		return
 	}
 	// Parse data
-	if data, err = parseData(cr, header.Step); err != nil {
+	if data, err = parseCSVData(cr, header.Step); err != nil {
 		err = fmt.Errorf("failed to parse data: %w", err)
 		return
 	}
 	return
 }
 
-func parseHeader(cr *csv.Reader) (header CSVHeader, err error) {
+func parseCSVHeader(cr *csv.Reader) (header FileHeader, err error) {
 	var records []string
 	// line 1
 	records, err = cr.Read()
@@ -103,7 +202,7 @@ func parseHeader(cr *csv.Reader) (header CSVHeader, err error) {
 	return
 }
 
-func parseData(cr *csv.Reader, stepping time.Duration) (data []point, err error) {
+func parseCSVData(cr *csv.Reader, stepping time.Duration) (data []point, err error) {
 	// nb of records changes for data
 	cr.FieldsPerRecord = -1 // variable, some Enedis exports append trailing empty fields to data lines
 	// remove data header
@@ -114,11 +213,12 @@ func parseData(cr *csv.Reader, stepping time.Duration) (data []point, err error)
 	}
 	// Process data lines
 	var (
-		records     []string
-		line        int
-		recordTime  time.Time
-		recordValue int
-		computedkWh float64
+		records        []string
+		line           int
+		recordTime     time.Time
+		recordValue    int
+		recordDuration time.Duration
+		computedkWh    float64
 	)
 	if stepping == noSteppingValue {
 		data = make([]point, 0, 365*24*(time.Hour/defaultStepping))
@@ -163,24 +263,27 @@ func parseData(cr *csv.Reader, stepping time.Duration) (data []point, err error)
 			if line > dataStartLine {
 				// get previous point and compute stepping
 				prevPoint := data[len(data)-1]
-				stepping := recordTime.Sub(prevPoint.Time)
-				computedkWh = float64(recordValue) / 1000 / float64(time.Hour/stepping)
+				recordDuration = recordTime.Sub(prevPoint.Time)
+				computedkWh = float64(recordValue) / 1000 / float64(time.Hour/recordDuration)
 				if line == dataStartLine+1 {
 					// compute the first point kWh using the same stepping
 					firstPoint := data[len(data)-1]
-					firstPoint.Conso = firstPoint.Value / 1000 / float64(time.Hour/stepping)
+					firstPoint.Conso = firstPoint.Value / 1000 / float64(time.Hour/recordDuration)
+					firstPoint.Duration = recordDuration
 					data[len(data)-1] = firstPoint
 				}
 			}
 			// else first point, can not compute stepping without a previous point, waiting for second point to retro compute first point
 		} else {
-			computedkWh = float64(recordValue) / 1000 / float64(time.Hour/stepping)
+			recordDuration = stepping
+			computedkWh = float64(recordValue) / 1000 / float64(time.Hour/recordDuration)
 		}
 		// save value
 		data = append(data, point{
-			Time:  recordTime.In(frLocation),   // make sure every date time in this program is in the same loc
-			Value: float64(recordValue) / 1000, // convert W to kW
-			Conso: computedkWh,
+			Time:     recordTime.In(frLocation),   // make sure every date time in this program is in the same loc
+			Duration: recordDuration,              // 0 until retro computed for the first point of an auto stepped file
+			Value:    float64(recordValue) / 1000, // convert W to kW
+			Conso:    computedkWh,
 		})
 	}
 	if errors.Is(err, io.EOF) {
