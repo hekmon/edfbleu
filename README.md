@@ -14,86 +14,60 @@ Ce programme vous permets de calculer localement le prix de votre consommation s
 
 #### Export de vos données
 
-Une fois la collecte activé et suffisamment de données disponibles, vous pouvez demander un export de vos données de consommation [ici](https://mon-compte-particulier.enedis.fr/suivi-de-mesures/?ajouter_telechargement=true). Faites bien attention à sélectionner `Consommation horaire` dans l'option types de données et à sélectionner une durée d'un an idéalement.
+Une fois la collecte activé et suffisamment de données disponibles, vous pouvez demander un export de vos données de consommation [ici](https://mon-compte-particulier.enedis.fr/suivi-de-mesures/?ajouter_telechargement=true). Deux types d'exports sont disponibles, au format `.xlsx` :
+
+* La **consommation quotidienne** (`Export_energie_...xlsx`) : la consommation totale de chaque jour, sur la période de votre choix en un seul fichier. Le détail intra-journée n'y figure cependant pas : seul l'option base peut être tarifée avec cet export (voir la note correspondante plus bas).
+* La **courbe de charge** (`Export_courbe_de_charge_...xlsx`) : la consommation par pas de 30 minutes, qui permet un calcul exact pour toutes les options. Attention, Enedis limite ces exports à **7 jours par téléchargement** : pour couvrir une longue période, téléchargez donc plusieurs exports hebdomadaires, le programme sait les fusionner (voir plus bas).
+
+Puis :
 * Attendre quelques minutes (cela peut être plus ou moins long).
 * Récupérer votre export [ici](https://mon-compte-particulier.enedis.fr/mes-telechargements-mesures/).
+
+L'ancien export CSV horaire n'est plus proposé par Enedis mais reste supporté par le programme si vous en avez conservé.
 
 ### Utilisation du programme
 
 * Récupérer une version du programme compilé dans les [releases](https://github.com/hekmon/edfbleu/releases) ou le compiler vous-même avec `go build`.
-* Executer le programme en lui indiquant le chemin de votre export de données Enedis (voir exemple ci-dessous).
+* Executer le programme en lui indiquant le chemin de votre export de données Enedis. Vous pouvez lui donner plusieurs fichiers à la suite pour les fusionner (pratique avec les exports hebdomadaires de courbe de charge), et l'ancien drapeau `-csv` fonctionne toujours pour indiquer un fichier.
+
+Exemple avec deux exports hebdomadaires de courbe de charge (fichiers `.xlsx`) :
 
 ```plain
-doudou@DGaming:~/go/edfbleu$ ./edfbleu -csv 'Enedis_Conso_Heure_20210901-20220831_XXXXXXXXXXXXXX.csv' -monthly
-PRM:            XXXXXXXXXXXXXX
-Start:          2021-08-31 00:00:00 +0200 CEST
-End:            2022-09-01 00:00:00 +0200 CEST
+doudou@DGaming:~/go/edfbleu$ ./edfbleu -monthly courbe_de_charge_semaine1.xlsx courbe_de_charge_semaine2.xlsx
+PRM:            12345678901234
+Start:          2025-01-06 00:00:00 +0100 CET
+End:            2025-01-20 00:00:00 +0100 CET
+Stepping:       30m0s
 
-* September 2021
-Option base:    101.75€
-Option HC:      102.72€
-Option Tempo:   85.00€
-
-* October 2021
-Option base:    86.66€
-Option HC:      87.50€
-Option Tempo:   72.67€
-
-* November 2021
-Option base:    88.71€
-Option HC:      89.36€
-Option Tempo:   81.75€
-
-* December 2021
-Option base:    80.71€
-Option HC:      81.02€
-Option Tempo:   95.92€
-
-* January 2022
-Option base:    92.68€
-Option HC:      93.38€
-Option Tempo:   160.03€
-
-* February 2022
-Option base:    72.73€
-Option HC:      73.00€
-Option Tempo:   63.54€
-
-* March 2022
-Option base:    87.27€
-Option HC:      87.81€
-Option Tempo:   74.59€
-
-* April 2022
-Option base:    85.82€
-Option HC:      86.52€
-Option Tempo:   72.84€
-
-* May 2022
-Option base:    99.22€
-Option HC:      99.85€
-Option Tempo:   83.75€
-
-* June 2022
-Option base:    111.07€
-Option HC:      111.99€
-Option Tempo:   92.46€
-
-* July 2022
-Option base:    139.22€
-Option HC:      141.24€
-Option Tempo:   116.76€
-
-* August 2022
-Option base:    117.63€
-Option HC:      118.61€
-Option Tempo:   78.67€
+* January 2025
+Consommation:   ~224.15 kWh
+Option base:    56.40€
+Option HC:      57.02€
+Option Tempo:   82.67€
 
 * TOTAL
-Option base:    1165.72€
-Option HC:      1175.24€
-Option Tempo:   1079.86€
+Consommation:   ~224.15 kWh
+Option base:    56.40€
+Option HC:      57.02€
+Option Tempo:   82.67€
 doudou@DGaming:~/go/edfbleu$
+```
+
+Exemple avec un export de consommation quotidienne (seul l'option base peut être tarifée, voir la note correspondante plus bas ; le programme s'arrête alors sur une erreur après avoir affiché le résultat de l'option base) :
+
+```plain
+doudou@DGaming:~/go/edfbleu$ ./edfbleu consommation_quotidienne.xlsx
+PRM:            12345678901234
+Start:          2025-01-01 00:00:00 +0100 CET
+End:            2025-04-01 00:00:00 +0200 CEST
+Stepping:       24h0m0s
+
+* TOTAL
+Consommation:   ~1416.75 kWh
+Option base:    356.46€
+2025/04/02 10:12:43 daily-energy exports cannot be priced under HC/HP or Tempo: per-period consumption is not available, use the half-hourly load-curve export
+doudou@DGaming:~/go/edfbleu$ echo $?
+1
 ```
 
 ## Notes
@@ -101,6 +75,18 @@ doudou@DGaming:~/go/edfbleu$
 ### Heures creuses
 
 Différentes périodes d'heure creuses existent par commune (vous pouvez vérifiez [ici](https://www.enedis.fr/heures-creuses/standard)). Une commune peut d'ailleurs en avoir plusieurs différentes suivant les jours. Le calcul d'heures creuses de ce programme est donc une approximation, la période la plus répandue 23H30-7H30 a donc été sélectionnée pour les calculs. Gardez cependant en tête que votre commune a certainement des tranches horaires différentes et/ou dynamiques.
+
+### Exports quotidiens
+
+L'export de consommation quotidienne ne contient que la consommation totale de chaque jour : la répartition de votre consommation au cours de la journée (heures creuses/heures pleines et plages tempo) n'y figure pas. L'option base peut être tarifée exactement avec ces seules données, mais les montants des options heures creuses et tempo ne peuvent pas être calculés sans le détail intra-journée : au lieu de les approximer, le programme les refuse et s'arrête avec un message d'erreur explicite après avoir affiché le résultat de l'option base. Pour tarifer les options heures creuses et tempo, utilisez les exports de courbe de charge (demi-heure).
+
+### Fusion de plusieurs exports
+
+Le programme accepte plusieurs fichiers en entrée : leurs données sont fusionnées puis tarifées ensemble, ce qui permet de couvrir une longue période avec les exports hebdomadaires de courbe de charge. Tous les fichiers doivent porter sur le même PRM et le même type d'export (les exports quotidiens et les exports de courbe de charge ne peuvent pas être mélangés). Si deux exports couvrent des périodes qui se recouvrent (par exemple des fenêtres de 7 jours qui partagent leurs jours de bord), les enregistrements en double sont automatiquement dédupliqués — la valeur du premier fichier passé en argument est conservée — et un warning récapitulatif indique combien d'enregistrements ont été écartés. Si en revanche des enregistrements portant sur la même période ont des valeurs différentes, le programme s'arrête en signalant l'anomalie. Enfin, si des enregistrements manquent entre deux fichiers, un warning vous prévient que la consommation de ces périodes n'est pas comptée.
+
+### Format des fichiers
+
+Les exports `.xlsx` (quotidiens et courbes de charge) sont lus avec la bibliothèque Go [excelize](https://github.com/xuri/excelize). Le type d'export est détecté à partir des en-têtes de colonnes de la feuille de données, pas du nom du fichier : les exports en double comptage (consommation et production) sont également gérés, seule la feuille de consommation étant tarifée.
 
 ### Jours tempo
 
