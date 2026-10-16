@@ -9,8 +9,6 @@ import (
 
 var (
 	frLocation *time.Location
-	//  overrided during compilation
-	Version = "development"
 )
 
 func main() {
@@ -29,7 +27,7 @@ func main() {
 	}
 	// Act on flags
 	if *versionFlag {
-		fmt.Printf("Version:\t\t%s\n", Version)
+		fmt.Printf("Version:		%s\n", Version())
 		fmt.Printf("Last known data:\t%d %s %d\n", lastUpdate.Day(), lastUpdate.Month(), lastUpdate.Year())
 		return
 	}
