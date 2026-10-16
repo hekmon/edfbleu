@@ -104,12 +104,16 @@ Différentes périodes d'heure creuses existent par commune (vous pouvez vérifi
 
 ### Jours tempo
 
+#### Tempo calendar fetch
+
+At startup, the program tries to fetch the Tempo day colors from [api-couleur-tempo.fr](https://www.api-couleur-tempo.fr/), a free third-party API serving the RTE Tempo data (RTE remains the source of truth). If the API is unavailable, the program falls back to the Tempo calendar compiled into the binary (last update: 02/04/2024) and prints a warning: the fetch itself never makes the program fail. Days which have not been decided yet have no color and can not be priced: the program warns you when your data set goes beyond the last decided day.
+
 #### Jours rouges et blancs
 
 Ce programme n'utilise pas (encore ?) d'API pour récupérer les couleurs des jours. Pour le moment chacun des jours est enregistré rétrospectivement dans le programme et ces dates sont compilées au démarrage. Cela veut dire que celui-ci doit être régulièrement mis à jour (surtout en hiver). Si votre export de données contient des dates qui ne sont pas connues par le programme, vous aurez le warning suivant:
 
 ```plain
-/!\ the data set contains values that are beyong the internal data this program has. Please update the code.
+/!\ the data set contains values that are beyond the internal data this program has. Please update the code.
 ```
 
 Si vous le rencontrez, n'hésitez pas à ouvrir une [issue](https://github.com/hekmon/edfbleu/issues) ou une [pull request](https://github.com/hekmon/edfbleu/pulls) afin de mettre à jour le programme.

@@ -42,9 +42,15 @@ func main() {
 		log.Fatal(err)
 	}
 	// Issue warning if our data is outdated
-	if header.End.After(lastUpdate) {
+	if usingAPIData {
+		if header.End.After(apiLastDecided) {
+			fmt.Println()
+			fmt.Printf("/!\\ the data set contains values that are beyond the last tempo day decided so far (%s): the color of the next days does not exist yet so they can not be priced.\n", apiLastDecided.Format(headerDateFormat))
+			fmt.Println()
+		}
+	} else if header.End.After(lastUpdate) {
 		fmt.Println()
-		fmt.Printf("/!\\ the data set contains values that are beyong the internal data this program has. Please update the code.\n")
+		fmt.Printf("/!\\ the data set contains values that are beyond the internal data this program has. Please update the code.\n")
 		fmt.Println()
 	}
 	// Compute
