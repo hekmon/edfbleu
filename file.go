@@ -48,6 +48,12 @@ type parsedFile struct {
 	data   []point
 }
 
+// sourcedPoint associates a consumption record with the input file it was parsed from
+type sourcedPoint struct {
+	record point
+	path   string
+}
+
 // parseFile parses an Enedis export file: the legacy CSV export and the XLSX exports of the
 // current Enedis web portal (daily and half-hourly) are supported
 func parseFile(path string) (header FileHeader, data []point, err error) {
@@ -78,6 +84,8 @@ func parseFiles(paths []string) (header FileHeader, data []point, err error) {
 
 // mergeFiles merges the records of several parsed input files into a single data set sorted
 // chronologically. All the files must cover the same PRM and use the same kind of records.
+// Overlapping files are allowed: the records they have in common are deduplicated (the value of
+// the first file in argument order wins) and records in conflict are refused.
 func mergeFiles(files []parsedFile) (header FileHeader, data []point, err error) {
 	if len(files) == 0 {
 		err = fmt.Errorf("no input file to merge")
@@ -108,20 +116,43 @@ func mergeFiles(files []parsedFile) (header FileHeader, data []point, err error)
 			header.End = file.header.End
 		}
 	}
-	// Gather all the records and sort them chronologically
+	// Gather all the records keeping the input file order (the first file wins on overlaps)
+	// and sort them chronologically
+	sourced := make([]sourcedPoint, 0, len(files)*64)
 	for _, file := range files {
-		data = append(data, file.data...)
+		for _, record := range file.data {
+			sourced = append(sourced, sourcedPoint{record: record, path: file.path})
+		}
 	}
-	sort.Slice(data, func(i, j int) bool {
-		return data[i].Time.Before(data[j].Time)
+	sort.SliceStable(sourced, func(i, j int) bool {
+		return sourced[i].record.Time.Add(-sourced[i].record.Duration).
+			Before(sourced[j].record.Time.Add(-sourced[j].record.Duration))
 	})
-	// Check for overlapping files and warn about missing records
+	// Drop the duplicated records of overlapping files and refuse the conflicting ones
+	var origins []string // input file of each kept record
+	deduplicated := 0
+	for _, current := range sourced {
+		if len(data) > 0 {
+			previous := data[len(data)-1]
+			if current.record.Time.Add(-current.record.Duration).Equal(previous.Time.Add(-previous.Duration)) {
+				if current.record.Time == previous.Time && current.record.Value == previous.Value {
+					deduplicated++ // same record in two files: the first file wins
+					continue
+				}
+				err = fmt.Errorf("overlapping input files with conflicting values for the record covering %v to %v (%s: %v kW and %s: %v kW)",
+					previous.Time.Add(-previous.Duration), previous.Time, origins[len(origins)-1], previous.Value, current.path, current.record.Value)
+				return
+			}
+		}
+		data = append(data, current.record)
+		origins = append(origins, current.path)
+	}
+	if deduplicated > 0 {
+		fmt.Printf("/!\\ %d overlapping half-hour records deduplicated\n", deduplicated)
+	}
+	// Warn about missing records
 	for index := 1; index < len(data); index++ {
 		previous, current := data[index-1], data[index]
-		if current.Time == previous.Time {
-			err = fmt.Errorf("overlapping input files: several records end at %v", current.Time)
-			return
-		}
 		gap := current.Time.Add(-current.Duration).Sub(previous.Time)
 		if gap > 0 && gap >= previous.Duration {
 			fmt.Printf("/!\\ missing data between %v and %v: the consumption of this period is not accounted for\n", previous.Time, current.Time.Add(-current.Duration))

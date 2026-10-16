@@ -481,12 +481,29 @@ func TestMergeFiles(t *testing.T) {
 	}); err == nil {
 		t.Error("expected an error when mixing different PRMs")
 	}
-	// Overlapping files are refused
+	// Overlapping files share their duplicated records: the value of the first file in
+	// argument order wins and the duplicates are dropped
+	_, data, err = mergeFiles([]parsedFile{
+		{path: "first.xlsx", data: []point{day(1, 30*time.Minute), day(2, 30*time.Minute)}},
+		{path: "second.xlsx", data: []point{day(1, 30*time.Minute), day(3, 30*time.Minute)}},
+	})
+	if err != nil {
+		t.Fatalf("overlapping files should be deduplicated: %v", err)
+	}
+	if len(data) != 3 {
+		t.Errorf("wrong record count after deduplication: %d instead of 3", len(data))
+	}
+	for index, want := range []point{day(1, 30*time.Minute), day(2, 30*time.Minute), day(3, 30*time.Minute)} {
+		if data[index].Time != want.Time || data[index].Value != want.Value {
+			t.Errorf("record %d: got %v (%v kW) instead of %v (%v kW)", index, data[index].Time, data[index].Value, want.Time, want.Value)
+		}
+	}
+	// A record in conflict (same period, different value) is refused
 	if _, _, err = mergeFiles([]parsedFile{
 		{path: "first.xlsx", data: []point{day(1, 30*time.Minute)}},
-		{path: "second.xlsx", data: []point{day(1, 30*time.Minute)}},
+		{path: "second.xlsx", data: []point{{Time: day(1, 30*time.Minute).Time, Duration: 30 * time.Minute, Value: 2}}},
 	}); err == nil {
-		t.Error("expected an error when merging overlapping files")
+		t.Error("expected an error when merging overlapping files with conflicting values")
 	}
 	// Empty inputs are refused
 	if _, _, err = mergeFiles(nil); err == nil {
@@ -628,5 +645,20 @@ func TestRealLoadCurveExport(t *testing.T) {
 		if _, _, err = priceRecords(header, data, option); err != nil {
 			t.Errorf("the %s option should price the real load curve export: %v", option.name, err)
 		}
+	}
+	// Merging the same export twice deduplicates the overlapping records
+	_, merged, err := parseFiles([]string{path, path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(merged) != 336 {
+		t.Errorf("wrong merged record count: %d instead of 336", len(merged))
+	}
+	var mergedSum float64
+	for _, record := range merged {
+		mergedSum += record.Conso
+	}
+	if math.Abs(mergedSum-114.90) > 0.005 {
+		t.Errorf("wrong merged consumption total: %f instead of 114.90", mergedSum)
 	}
 }
